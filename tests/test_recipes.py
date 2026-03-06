@@ -23,94 +23,88 @@ def session_fixture():
         yield session
 
 
-def test_create_recipe(session: Session):
-    def get_session_override():
-        return session
+@pytest.mark.usefixtures("session")
+class TestRecipeCreation:
+    """Tests for the /recipes/ POST endpoint."""
 
-    app.dependency_overrides[get_session] = get_session_override
+    def test_create_recipe(self, session: Session):
+        def get_session_override():
+            return session
 
-    recipe_data = {
-        "name": "Pasta Carbonara",
-        "ingredients": ["pasta", "eggs", "cheese", "bacon"],
-        "instructions": "Cook pasta. Mix eggs and cheese. Add bacon. Combine.",
-        "servings": 2,
-        "vegetarian": False,
-    }
+        app.dependency_overrides[get_session] = get_session_override
 
-    response = client.post("/recipes/", json=recipe_data)
+        recipe_data = {
+            "name": "Pasta Carbonara",
+            "ingredients": ["pasta", "eggs", "cheese", "bacon"],
+            "instructions": "Cook pasta. Mix eggs and cheese. Add bacon. Combine.",
+            "servings": 2,
+            "vegetarian": False,
+        }
 
-    # Assert the response is correct
-    assert response.status_code == 201
-    created_recipe = response.json()
-    print(created_recipe)
-    assert created_recipe["name"] == "Pasta Carbonara"
-    assert created_recipe["servings"] == 2
-    assert created_recipe["vegetarian"] is False
+        response = client.post("/recipes/", json=recipe_data)
 
-    # 1. Check the recipe exists in the database
-    db_recipe = session.exec(
-        select(Recipe).where(Recipe.id == created_recipe["id"])
-    ).first()
-    assert db_recipe is not None
-    assert db_recipe.name == "Pasta Carbonara"
+        # Assert the response is correct
+        assert response.status_code == 201
+        created_recipe = response.json()
+        print(created_recipe)
+        assert created_recipe["name"] == "Pasta Carbonara"
+        assert created_recipe["servings"] == 2
+        assert created_recipe["vegetarian"] is False
 
-    # Check ingredients exist in the database
-    db_ingredients = session.exec(select(Ingredient)).all()
-    ingredient_names = [ing.name for ing in db_ingredients]
-    assert "pasta" in ingredient_names
-    assert "eggs" in ingredient_names
-    assert "bacon" in ingredient_names
+        # 1. Check the recipe exists in the database
+        db_recipe = session.exec(
+            select(Recipe).where(Recipe.id == created_recipe["id"])
+        ).first()
+        assert db_recipe is not None
+        assert db_recipe.name == "Pasta Carbonara"
 
-    # Verify links exist
-    links = session.exec(select(RecipeIngredientLink)).all()
-    assert len(links) == len(recipe_data["ingredients"])
+        # Check ingredients exist in the database
+        db_ingredients = session.exec(select(Ingredient)).all()
+        ingredient_names = [ing.name for ing in db_ingredients]
+        assert "pasta" in ingredient_names
+        assert "eggs" in ingredient_names
+        assert "bacon" in ingredient_names
 
-def test_create_recipe_missing_data():
-    """Test 422 error for missing required fields."""
-    invalid_data = {
-        "name": "Incomplete Recipe",
-        # Missing ingredients, instructions, servings, vegetarian
-    }
-    response = client.post("/recipes/", json=invalid_data)
-    assert response.status_code == 422
+        # Verify links exist
+        links = session.exec(select(RecipeIngredientLink)).all()
+        assert len(links) == len(recipe_data["ingredients"])
 
-def test_create_recipe_server_error(mocker, session: Session):
-    """Test 500 error on database failure."""
-    mocker.patch("src.app.database.session.Session.commit", side_effect=Exception("DB error"))
-    recipe_data = {
-        "name": "Test Recipe",
-        "ingredients": ["test"],
-        "instructions": "Test instructions",
-        "servings": 1,
-        "vegetarian": True,
-    }
-    # with pytest.raises(HTTPException):
-    response = client.post("/recipes/", json=recipe_data)
-    assert response.status_code == 500
-    assert "Failed to create recipe" in response.json()["detail"]
+    def test_create_recipe_missing_data(self):
+        """Test 422 error for missing required fields."""
+        invalid_data = {
+            "name": "Incomplete Recipe",
+            # Missing ingredients, instructions, servings, vegetarian
+        }
+        response = client.post("/recipes/", json=invalid_data)
+        assert response.status_code == 422
 
-# def test_create_recipe_rollback_on_failure(mocker):
-#     """Test that the database is rolled back if an error occurs."""
-#     # Mock the session to raise an error after adding the recipe
-#     mock_session = mocker.MagicMock(spec=Session)
-#     mock_session.add.side_effect = None  # Allow add to succeed
-#     mock_session.commit.side_effect = [None, Exception("DB error")]  # Fail on second commit
+    def test_create_recipe_server_error(self, mocker, session: Session):
+        """Test 500 error on database failure."""
+        mocker.patch("src.app.database.session.Session.commit", side_effect=Exception("DB error"))
+        recipe_data = {
+            "name": "Test Recipe",
+            "ingredients": ["test"],
+            "instructions": "Test instructions",
+            "servings": 1,
+            "vegetarian": True,
+        }
+        # with pytest.raises(HTTPException):
+        response = client.post("/recipes/", json=recipe_data)
+        assert response.status_code == 500
+        assert "Failed to create recipe" in response.json()["detail"]
 
-#     with mocker.patch("src.app.database", return_value=mock_session):
-#         recipe_data = {
-#             "name": "Test Recipe",
-#             "ingredients": ["test"],
-#             "instructions": "Test instructions",
-#             "servings": 1,
-#             "vegetarian": True,
-#         }
 
-#         response = client.post("/recipes/", json=recipe_data)
+@pytest.mark.usefixtures("session")
+class TestRecipeFetch:
+    """Tests for the /recipes/{} GET endpoint."""
 
-#         print(f"commit.side_effect: {mock_session.commit.side_effect}")
-#         print(f"add called: {mock_session.add.call_count}")
-#         print(f"commit called: {mock_session.commit.call_count}")
-#         print(f"rollback called: {mock_session.rollback.call_count}")
+    def test_get_recipe(self, session: Session):
+        """Test getting a list of recipes."""
+        def get_session_override():
+            return session
 
-#         # Verify rollback was called
-#         mock_session.rollback.assert_called_once()
+        app.dependency_overrides[get_session] = get_session_override
+
+        response = client.get("/recipes/")
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
