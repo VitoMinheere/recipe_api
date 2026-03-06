@@ -1,31 +1,16 @@
 from typing import List
+import logging
 
 from fastapi import APIRouter, Depends, status, HTTPException
 from pydantic import BaseModel
-from sqlmodel import Field, Session, SQLModel, select
+from sqlmodel import select
 
-from src.app.database import get_session
+from src.app.database.session import get_session
+from src.app.database.models import Recipe, Ingredient, RecipeIngredientLink
 
 router = APIRouter()
 
-
-class RecipeIngredientLink(SQLModel, table=True):
-    recipe_id: int = Field(foreign_key="recipe.id", primary_key=True)
-    ingredient_id: int = Field(foreign_key="ingredient.id", primary_key=True)
-
-
-class Recipe(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
-    instructions: str = Field()
-    servings: int = Field()
-    vegetarian: bool = Field()
-
-
-class Ingredient(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    name: str
-
+logger = logging.getLogger(__name__)
 
 class RecipeCreate(BaseModel):
     id: int | None = None
@@ -91,16 +76,21 @@ def _upsert_ingredients(
     """Upsert ingredients (create if they don't exist)."""
     ingredients = []
     for ingredient_name in ingredient_names:
-        ingredient = session.exec(
-            select(Ingredient).where(Ingredient.name == ingredient_name)
-        ).first()
+        try:
+            ingredient = session.exec(
+                select(Ingredient).where(Ingredient.name == ingredient_name)
+            ).first()
 
-        if not ingredient:
-            ingredient = Ingredient(name=ingredient_name)
-            session.add(ingredient)
-            session.commit()
-            session.refresh(ingredient)
-        ingredients.append(ingredient)
+            if not ingredient:
+                ingredient = Ingredient(name=ingredient_name)
+                session.add(ingredient)
+                session.commit()
+                session.refresh(ingredient)
+            ingredients.append(ingredient)
+        except Exception as e:
+            logger.error(f"Error upserting ingredient '{ingredient_name}': {e}")
+            session.rollback()
+            raise     
     return ingredients
 
 
@@ -108,11 +98,16 @@ def _create_links(
     session: Session, recipe_id: int, ingredients: List[Ingredient]
 ) -> None:
     """Create links between a recipe and its ingredients."""
-    ingredient_ids = [ingredient.id for ingredient in ingredients]
-    for ingredient_id in ingredient_ids:
-        link = RecipeIngredientLink(
-            recipe_id=recipe_id,
-            ingredient_id=ingredient_id,
-        )
-        session.add(link)
-    session.commit()
+    try:
+        ingredient_ids = [ingredient.id for ingredient in ingredients]
+        for ingredient_id in ingredient_ids:
+            link = RecipeIngredientLink(
+                recipe_id=recipe_id,
+                ingredient_id=ingredient_id,
+            )
+            session.add(link)
+        session.commit()
+    except Exception as e:
+        logger.error(f"Error creating links for recipe {recipe_id}: {e}")
+        session.rollback()
+        raise 

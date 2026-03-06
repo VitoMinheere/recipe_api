@@ -4,9 +4,9 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine, select
 from sqlmodel.pool import StaticPool
 
-from src.app.database import get_session
+from src.app.database.session import get_session
 from src.app.main import app
-from src.app.routes.recipes import Ingredient, Recipe, RecipeIngredientLink
+from src.app.database.models import Recipe, Ingredient, RecipeIngredientLink
 
 client = TestClient(app)
 
@@ -76,7 +76,7 @@ def test_create_recipe_missing_data():
 
 def test_create_recipe_server_error(mocker, session: Session):
     """Test 500 error on database failure."""
-    mocker.patch("src.app.routes.recipes.Session.commit", side_effect=Exception("DB error"))
+    mocker.patch("src.app.database.session.Session.commit", side_effect=Exception("DB error"))
     recipe_data = {
         "name": "Test Recipe",
         "ingredients": ["test"],
