@@ -23,13 +23,14 @@ class Ingredient(SQLModel, table=True):
     name: str
 
 class RecipeCreate(BaseModel):
+    id: int | None = None
     name: str
     ingredients: List[str]
     instructions: str
     servings: int
     vegetarian: bool
 
-@router.post("/", status_code=201, response_model=RecipeCreate)
+@router.post("/", status_code=201, response_model=Recipe)
 def create_recipe(
     recipe_data: RecipeCreate, 
     session: Session = Depends(get_session)
@@ -49,4 +50,15 @@ def create_recipe(
             session.refresh(ingredient)
         ingredients.append(ingredient)
 
-    return recipe_data
+    # Create the recipe
+    recipe = Recipe(
+        name=recipe_data.name,
+        instructions=recipe_data.instructions,
+        servings=recipe_data.servings,
+        vegetarian=recipe_data.vegetarian,
+    )
+    session.add(recipe)
+    session.commit()
+    session.refresh(recipe)
+
+    return recipe
