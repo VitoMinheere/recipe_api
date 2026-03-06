@@ -41,6 +41,13 @@ def test_create_recipe(session: Session):
     assert created_recipe["servings"] == 2
     assert created_recipe["vegetarian"] is False
 
+    # 1. Check the recipe exists in the database
+    db_recipe = session.exec(
+        select(Recipe).where(Recipe.id == created_recipe["id"])
+    ).first()
+    assert db_recipe is not None
+    assert db_recipe.name == "Pasta Carbonara"
+
     # Check ingredients exist in the database
     db_ingredients = session.exec(select(Ingredient)).all()
     ingredient_names = [ing.name for ing in db_ingredients]
