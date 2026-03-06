@@ -30,25 +30,30 @@ class RecipeCreate(BaseModel):
     servings: int
     vegetarian: bool
 
-@router.post("/", status_code=201, response_model=Recipe)
+@router.post(
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    response_model=Recipe,
+    responses={
+        201: {"description": "Recipe created successfully"},
+        400: {"description": "Invalid input data"},
+        500: {"description": "Internal server error"},
+    },
+)
 def create_recipe(
     recipe_data: RecipeCreate, 
     session: Session = Depends(get_session)
     ):
-    # Upsert ingredients (create if they don't exist)
-    ingredients = []
-    for ingredient_name in recipe_data.ingredients:
-        # Check if the ingredient already exists (case-insensitive)
-        ingredient = session.exec(
-            select(Ingredient).where(Ingredient.name == ingredient_name)
-        ).first()
+    """
+    Create a new recipe with ingredients.
 
-        if not ingredient:
-            ingredient = Ingredient(name=ingredient_name)
-            session.add(ingredient)
-            session.commit()
-            session.refresh(ingredient)
-        ingredients.append(ingredient)
+    - **name**: Name of the recipe.
+    - **ingredients**: List of ingredient names.
+    - **instructions**: Cooking instructions.
+    - **servings**: Number of servings.
+    - **vegetarian**: Whether the recipe is vegetarian.
+    """
+    ingredients = _upsert_ingredients(session, recipe_data.ingredients)
 
     # Create the recipe
     recipe = Recipe(
@@ -61,14 +66,35 @@ def create_recipe(
     session.commit()
 
     # Create links
-    for ingredient in ingredients:
+    _create_links(session, recipe.id, ingredients)
+
+    # Reload the recipe for response
+    session.refresh(recipe)
+    return recipe
+
+def _upsert_ingredients(session: Session, ingredient_names: List[str]) -> List[Ingredient]:
+    """Upsert ingredients (create if they don't exist)."""
+    ingredients = []
+    for ingredient_name in ingredient_names:
+        ingredient = session.exec(
+            select(Ingredient).where(Ingredient.name == ingredient_name)
+        ).first()
+
+        if not ingredient:
+            ingredient = Ingredient(name=ingredient_name)
+            session.add(ingredient)
+            session.commit()
+            session.refresh(ingredient)
+        ingredients.append(ingredient)
+    return ingredients
+
+def _create_links(session: Session, recipe_id: int, ingredients: List[Ingredient]) -> None:
+    """Create links between a recipe and its ingredients."""
+    ingredient_ids = [ingredient.id for ingredient in ingredients]
+    for ingredient_id in ingredient_ids:
         link = RecipeIngredientLink(
-            recipe_id=recipe.id,
-            ingredient_id=ingredient.id,
+            recipe_id=recipe_id,
+            ingredient_id=ingredient_id,
         )
         session.add(link)
     session.commit()
-
-    # Load the recipe for response
-    session.refresh(recipe)
-    return recipe
