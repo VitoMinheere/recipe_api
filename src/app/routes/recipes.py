@@ -59,6 +59,16 @@ def create_recipe(
     )
     session.add(recipe)
     session.commit()
-    session.refresh(recipe)
 
+    # Create links
+    for ingredient in ingredients:
+        link = RecipeIngredientLink(
+            recipe_id=recipe.id,
+            ingredient_id=ingredient.id,
+        )
+        session.add(link)
+    session.commit()
+
+    # Load the recipe for response
+    session.refresh(recipe)
     return recipe
