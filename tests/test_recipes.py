@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 from src.app.main import app
 from src.app.database import get_session
-from src.app.routes.recipes import Recipe, Ingredient
+from src.app.routes.recipes import Recipe, Ingredient, RecipeIngredientLink
 import pytest
 from sqlmodel import create_engine, Session, SQLModel, select
 from sqlmodel.pool import StaticPool
@@ -54,3 +54,7 @@ def test_create_recipe(session: Session):
     assert "pasta" in ingredient_names
     assert "eggs" in ingredient_names
     assert "bacon" in ingredient_names
+
+    # Verify links exist
+    links = session.exec(select(RecipeIngredientLink)).all()
+    assert len(links) == 3 
