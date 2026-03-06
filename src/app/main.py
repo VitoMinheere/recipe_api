@@ -1,5 +1,7 @@
 from fastapi import FastAPI
+from sqlmodel import Session, create_engine
 from src.app.routes.recipes import router as recipes_router
+# from typing import Annotated
 
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
@@ -17,7 +19,7 @@ def get_session():
         yield session
 
 
-SessionDep = Annotated[Session, Depends(get_session)]
+# SessionDep = Annotated[Session, Depends(get_session)]
 
 app = FastAPI()
 app.include_router(recipes_router, prefix="/recipes")
