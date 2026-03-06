@@ -1,19 +1,20 @@
-from typing import List
 import logging
+from typing import List
 
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlmodel import select
+from sqlmodel import Session, select
 
+from src.app.database.models import Recipe
 from src.app.database.session import get_session
-from src.app.database.models import Recipe, Ingredient, RecipeIngredientLink
-from src.app.services.recipe_services import upsert_ingredients, create_links
+from src.app.services.recipe_services import create_links, upsert_ingredients
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-class RecipeCreate(BaseModel):
+
+class RecipeModel(BaseModel):
     id: int | None = None
     name: str
     ingredients: List[str]
@@ -32,7 +33,7 @@ class RecipeCreate(BaseModel):
         500: {"description": "Internal server error"},
     },
 )
-def create_recipe(recipe_data: RecipeCreate, session: Session = Depends(get_session)):
+def create_recipe(recipe_data: RecipeModel, session: Session = Depends(get_session)):
     """
     Create a new recipe with ingredients.
 
@@ -60,7 +61,7 @@ def create_recipe(recipe_data: RecipeCreate, session: Session = Depends(get_sess
         # Reload the recipe for response
         session.refresh(recipe)
         return recipe
-    
+
     except Exception as e:
         print(e)
         session.rollback()
@@ -68,3 +69,10 @@ def create_recipe(recipe_data: RecipeCreate, session: Session = Depends(get_sess
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create recipe: {str(e)}",
         )
+
+
+@router.get("/", response_model=List[Recipe])
+def get_recipes(session: Session = Depends(get_session)):
+    """Get a list of all recipes."""
+    recipes = session.exec(select(Recipe)).all()
+    return recipes

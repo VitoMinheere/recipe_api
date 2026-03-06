@@ -1,26 +1,12 @@
 import pytest
-from fastapi import HTTPException
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine, select
-from sqlmodel.pool import StaticPool
+from sqlmodel import Session, select
 
+from src.app.database.models import Ingredient, Recipe, RecipeIngredientLink
 from src.app.database.session import get_session
 from src.app.main import app
-from src.app.database.models import Recipe, Ingredient, RecipeIngredientLink
 
 client = TestClient(app)
-
-
-@pytest.fixture(name="session")
-def session_fixture():
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        yield session
 
 
 @pytest.mark.usefixtures("session")
@@ -51,7 +37,7 @@ class TestRecipeCreation:
         assert created_recipe["servings"] == 2
         assert created_recipe["vegetarian"] is False
 
-        # 1. Check the recipe exists in the database
+        # Check the recipe exists in the database
         db_recipe = session.exec(
             select(Recipe).where(Recipe.id == created_recipe["id"])
         ).first()
@@ -80,7 +66,9 @@ class TestRecipeCreation:
 
     def test_create_recipe_server_error(self, mocker, session: Session):
         """Test 500 error on database failure."""
-        mocker.patch("src.app.database.session.Session.commit", side_effect=Exception("DB error"))
+        mocker.patch(
+            "src.app.database.session.Session.commit", side_effect=Exception("DB error")
+        )
         recipe_data = {
             "name": "Test Recipe",
             "ingredients": ["test"],
@@ -88,18 +76,33 @@ class TestRecipeCreation:
             "servings": 1,
             "vegetarian": True,
         }
-        # with pytest.raises(HTTPException):
+
         response = client.post("/recipes/", json=recipe_data)
         assert response.status_code == 500
         assert "Failed to create recipe" in response.json()["detail"]
 
 
-@pytest.mark.usefixtures("session")
+@pytest.mark.usefixtures("session_with_data")
 class TestRecipeFetch:
     """Tests for the /recipes/{} GET endpoint."""
 
-    def test_get_recipe(self, session: Session):
+    def test_get_recipe(self, session_with_data: Session):
         """Test getting a list of recipes."""
+
+        def get_session_override():
+            return session_with_data
+
+        app.dependency_overrides[get_session] = get_session_override
+
+        response = client.get("/recipes/")
+        recipes = response.json()
+
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
+        assert len(recipes) == 2
+
+    def test_get_recipe_no_recipes(self, session: Session):
+        """Test getting recipes when none exist."""
         def get_session_override():
             return session
 
@@ -107,4 +110,4 @@ class TestRecipeFetch:
 
         response = client.get("/recipes/")
         assert response.status_code == 200
-        assert isinstance(response.json(), list)
+        assert response.json() == []

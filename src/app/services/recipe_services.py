@@ -1,9 +1,12 @@
 import logging
-from sqlmodel import Session, select
 from typing import List
-from src.app.database.models import Recipe, Ingredient, RecipeIngredientLink
+
+from sqlmodel import Session, select
+
+from src.app.database.models import Ingredient, RecipeIngredientLink
 
 logger = logging.getLogger(__name__)
+
 
 def upsert_ingredients(
     session: Session, ingredient_names: List[str]
@@ -25,7 +28,7 @@ def upsert_ingredients(
         except Exception as e:
             logger.error(f"Error upserting ingredient '{ingredient_name}': {e}")
             session.rollback()
-            raise     
+            raise
     return ingredients
 
 
@@ -45,4 +48,4 @@ def create_links(
     except Exception as e:
         logger.error(f"Error creating links for recipe {recipe_id}: {e}")
         session.rollback()
-        raise 
+        raise

@@ -1,4 +1,5 @@
-from sqlmodel import Field, Session, SQLModel, select
+from sqlmodel import Field, SQLModel
+
 
 class RecipeIngredientLink(SQLModel, table=True):
     recipe_id: int = Field(foreign_key="recipe.id", primary_key=True)

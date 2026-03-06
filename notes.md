@@ -11,3 +11,6 @@ The create recipe endpoint is now also creating Ingredients and links between In
 Did not get the test for the rollback working due to issue with Mocking. Might get back to it later
 
 ## Get Recipe
+
+Second endpoint to work on was the GET. First to get all recipes and then to add the filtering on ingredients.
+Made another fixture to session with pre added Recipes and Ingredients to make it easier to test and to make sure I am not also testing the POST request in the GET test scenario's.
