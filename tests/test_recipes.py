@@ -1,4 +1,5 @@
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine, select
 from sqlmodel.pool import StaticPool
@@ -83,7 +84,33 @@ def test_create_recipe_server_error(mocker, session: Session):
         "servings": 1,
         "vegetarian": True,
     }
-    with pytest.raises(Exception, match="DB error"):
-        response = client.post("/recipes/", json=recipe_data)
-        assert response.status_code == 500
-        assert "Failed to create recipe" in response.json()["detail"]
+    # with pytest.raises(HTTPException):
+    response = client.post("/recipes/", json=recipe_data)
+    assert response.status_code == 500
+    assert "Failed to create recipe" in response.json()["detail"]
+
+# def test_create_recipe_rollback_on_failure(mocker):
+#     """Test that the database is rolled back if an error occurs."""
+#     # Mock the session to raise an error after adding the recipe
+#     mock_session = mocker.MagicMock(spec=Session)
+#     mock_session.add.side_effect = None  # Allow add to succeed
+#     mock_session.commit.side_effect = [None, Exception("DB error")]  # Fail on second commit
+
+#     with mocker.patch("src.app.database", return_value=mock_session):
+#         recipe_data = {
+#             "name": "Test Recipe",
+#             "ingredients": ["test"],
+#             "instructions": "Test instructions",
+#             "servings": 1,
+#             "vegetarian": True,
+#         }
+
+#         response = client.post("/recipes/", json=recipe_data)
+
+#         print(f"commit.side_effect: {mock_session.commit.side_effect}")
+#         print(f"add called: {mock_session.add.call_count}")
+#         print(f"commit called: {mock_session.commit.call_count}")
+#         print(f"rollback called: {mock_session.rollback.call_count}")
+
+#         # Verify rollback was called
+#         mock_session.rollback.assert_called_once()

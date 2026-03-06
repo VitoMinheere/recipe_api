@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Field, Session, SQLModel, select
 
@@ -56,24 +56,33 @@ def create_recipe(recipe_data: RecipeCreate, session: Session = Depends(get_sess
     - **servings**: Number of servings.
     - **vegetarian**: Whether the recipe is vegetarian.
     """
-    ingredients = _upsert_ingredients(session, recipe_data.ingredients)
+    try:
+        ingredients = _upsert_ingredients(session, recipe_data.ingredients)
 
-    # Create the recipe
-    recipe = Recipe(
-        name=recipe_data.name,
-        instructions=recipe_data.instructions,
-        servings=recipe_data.servings,
-        vegetarian=recipe_data.vegetarian,
-    )
-    session.add(recipe)
-    session.commit()
+        # Create the recipe
+        recipe = Recipe(
+            name=recipe_data.name,
+            instructions=recipe_data.instructions,
+            servings=recipe_data.servings,
+            vegetarian=recipe_data.vegetarian,
+        )
+        session.add(recipe)
+        session.commit()
 
-    # Create links
-    _create_links(session, recipe.id, ingredients)
+        # Create links
+        _create_links(session, recipe.id, ingredients)
 
-    # Reload the recipe for response
-    session.refresh(recipe)
-    return recipe
+        # Reload the recipe for response
+        session.refresh(recipe)
+        return recipe
+    
+    except Exception as e:
+        print(e)
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create recipe: {str(e)}",
+        )
 
 
 def _upsert_ingredients(

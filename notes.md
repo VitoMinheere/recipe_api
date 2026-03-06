@@ -7,3 +7,7 @@ Another approach is to make a separate class for Ingredient, they can be added t
 ### Table models
 After going over some options I decided to go with the Recipe - Ingredient - RecipeIngredient Table setup. I opted to add the vegetarian bool to the ingredient so later on I could clasify Recipe as vegetarian when all the ingredients are vegetarian. After creating the test I decided against this as it would require users to set it for every ingredient which would require a complicated Request.
 
+The create recipe endpoint is now also creating Ingredients and links between Ingredients and the Recipe. If any of those calls fail, the Database will be filled with useless data and that will add up quickly. A rollback mechanism can be applied to mitigate this.
+Did not get the test for the rollback working due to issue with Mocking. Might get back to it later
+
+## Get Recipe
