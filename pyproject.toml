@@ -1,0 +1,9 @@
+[project]
+name = "recipe-api"
+version = "0.1.0"
+description = "REST api to manage recipes"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi[standard]>=0.135.1",
+]
