@@ -1,22 +1,52 @@
-from fastapi import APIRouter, HTTPException
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from fastapi import APIRouter, HTTPException, Depends
+from sqlmodel import Field, Session, SQLModel, create_engine, select, Relationship
 from pydantic import BaseModel
 from typing import List
 
+from src.app.database import get_session
+
 router = APIRouter()
+
+class RecipeIngredientLink(SQLModel, table=True):
+    recipe_id: int = Field(foreign_key="recipe.id", primary_key=True)
+    ingredient_id: int = Field(foreign_key="ingredient.id", primary_key=True)
 
 class Recipe(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
-    ingredients: List[str] = Field(default=[], sa_type=JSON)
     instructions: str  = Field()
     servings: int = Field()
     vegetarian: bool = Field()
 
-class RecipeCreate(Recipe):
-    pass
+class Ingredient(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
 
-@router.post("/", status_code=201)
-def create_recipe(recipe: RecipeCreate):
-    # TODO: Persist to database
-    return recipe
+class RecipeCreate(BaseModel):
+    name: str
+    ingredients: List[str]
+    instructions: str
+    servings: int
+    vegetarian: bool
+
+@router.post("/", status_code=201, response_model=RecipeCreate)
+def create_recipe(
+    recipe_data: RecipeCreate, 
+    session: Session = Depends(get_session)
+    ):
+    # Upsert ingredients (create if they don't exist)
+    ingredients = []
+    for ingredient_name in recipe_data.ingredients:
+        # Check if the ingredient already exists (case-insensitive)
+        ingredient = session.exec(
+            select(Ingredient).where(Ingredient.name == ingredient_name)
+        ).first()
+
+        if not ingredient:
+            ingredient = Ingredient(name=ingredient_name)
+            session.add(ingredient)
+            session.commit()
+            session.refresh(ingredient)
+        ingredients.append(ingredient)
+
+    return recipe_data

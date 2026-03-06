@@ -1,19 +1,29 @@
 from fastapi.testclient import TestClient
 from src.app.main import app
+from src.app.database import get_session
 from src.app.routes.recipes import Recipe, Ingredient
 import pytest
 from sqlmodel import create_engine, Session, SQLModel, select
+from sqlmodel.pool import StaticPool
 
 client = TestClient(app)
 
 @pytest.fixture(name="session")
 def session_fixture():
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine(
+        "sqlite:///:memory:", 
+        connect_args={"check_same_thread": False}, 
+        poolclass=StaticPool)
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
 
 def test_create_recipe(session: Session):
+    def get_session_override():
+        return session
+
+    app.dependency_overrides[get_session] = get_session_override
+
     recipe_data = {
         "name": "Pasta Carbonara",
         "ingredients": ["pasta", "eggs", "cheese", "bacon"],
