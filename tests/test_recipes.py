@@ -63,3 +63,27 @@ def test_create_recipe(session: Session):
     # Verify links exist
     links = session.exec(select(RecipeIngredientLink)).all()
     assert len(links) == len(recipe_data["ingredients"])
+
+def test_create_recipe_missing_data():
+    """Test 422 error for missing required fields."""
+    invalid_data = {
+        "name": "Incomplete Recipe",
+        # Missing ingredients, instructions, servings, vegetarian
+    }
+    response = client.post("/recipes/", json=invalid_data)
+    assert response.status_code == 422
+
+def test_create_recipe_server_error(mocker, session: Session):
+    """Test 500 error on database failure."""
+    mocker.patch("src.app.routes.recipes.Session.commit", side_effect=Exception("DB error"))
+    recipe_data = {
+        "name": "Test Recipe",
+        "ingredients": ["test"],
+        "instructions": "Test instructions",
+        "servings": 1,
+        "vegetarian": True,
+    }
+    with pytest.raises(Exception, match="DB error"):
+        response = client.post("/recipes/", json=recipe_data)
+        assert response.status_code == 500
+        assert "Failed to create recipe" in response.json()["detail"]
