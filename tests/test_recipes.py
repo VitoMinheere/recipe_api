@@ -111,3 +111,14 @@ class TestRecipeFetch:
         response = client.get("/recipes/")
         assert response.status_code == 200
         assert response.json() == []
+
+    def test_get_recipe_by_id(self, session_with_data):
+        """Test getting a single recipe by ID."""
+        # Get the first recipe from the database
+        db_recipe = session_with_data.exec(select(Recipe)).first()
+        recipe_id = db_recipe.id
+
+        # Then, get the recipe by ID
+        response = client.get(f"/recipes/{recipe_id}")
+        assert response.status_code == 200
+        assert response.json()["name"] == db_recipe.name

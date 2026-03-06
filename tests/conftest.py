@@ -33,9 +33,9 @@ def session_with_data_fixture():
         eggs = Ingredient(name="eggs")
         bacon = Ingredient(name="bacon")
         potatoes = Ingredient(name="potatoes")
-        salmon = Ingredient(name="salmon")
+        onion = Ingredient(name="onion")
 
-        session.add_all([pasta, eggs, bacon, potatoes, salmon])
+        session.add_all([pasta, eggs, bacon, potatoes, onion])
         session.commit()
 
         # Create recipes
@@ -63,6 +63,7 @@ def session_with_data_fixture():
         ]
         stir_fry_links = [
             RecipeIngredientLink(recipe_id=stir_fry.id, ingredient_id=potatoes.id),
+            RecipeIngredientLink(recipe_id=stir_fry.id, ingredient_id=onion.id),
         ]
 
         session.add_all(carbonara_links + stir_fry_links)
