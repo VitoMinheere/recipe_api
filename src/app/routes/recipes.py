@@ -1,26 +1,31 @@
-from fastapi import APIRouter, HTTPException, Depends
-from sqlmodel import Field, Session, SQLModel, create_engine, select, Relationship
-from pydantic import BaseModel
 from typing import List
+
+from fastapi import APIRouter, Depends, status
+from pydantic import BaseModel
+from sqlmodel import Field, Session, SQLModel, select
 
 from src.app.database import get_session
 
 router = APIRouter()
 
+
 class RecipeIngredientLink(SQLModel, table=True):
     recipe_id: int = Field(foreign_key="recipe.id", primary_key=True)
     ingredient_id: int = Field(foreign_key="ingredient.id", primary_key=True)
 
+
 class Recipe(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
-    instructions: str  = Field()
+    instructions: str = Field()
     servings: int = Field()
     vegetarian: bool = Field()
+
 
 class Ingredient(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str
+
 
 class RecipeCreate(BaseModel):
     id: int | None = None
@@ -29,6 +34,7 @@ class RecipeCreate(BaseModel):
     instructions: str
     servings: int
     vegetarian: bool
+
 
 @router.post(
     "/",
@@ -40,10 +46,7 @@ class RecipeCreate(BaseModel):
         500: {"description": "Internal server error"},
     },
 )
-def create_recipe(
-    recipe_data: RecipeCreate, 
-    session: Session = Depends(get_session)
-    ):
+def create_recipe(recipe_data: RecipeCreate, session: Session = Depends(get_session)):
     """
     Create a new recipe with ingredients.
 
@@ -72,7 +75,10 @@ def create_recipe(
     session.refresh(recipe)
     return recipe
 
-def _upsert_ingredients(session: Session, ingredient_names: List[str]) -> List[Ingredient]:
+
+def _upsert_ingredients(
+    session: Session, ingredient_names: List[str]
+) -> List[Ingredient]:
     """Upsert ingredients (create if they don't exist)."""
     ingredients = []
     for ingredient_name in ingredient_names:
@@ -88,7 +94,10 @@ def _upsert_ingredients(session: Session, ingredient_names: List[str]) -> List[I
         ingredients.append(ingredient)
     return ingredients
 
-def _create_links(session: Session, recipe_id: int, ingredients: List[Ingredient]) -> None:
+
+def _create_links(
+    session: Session, recipe_id: int, ingredients: List[Ingredient]
+) -> None:
     """Create links between a recipe and its ingredients."""
     ingredient_ids = [ingredient.id for ingredient in ingredients]
     for ingredient_id in ingredient_ids:

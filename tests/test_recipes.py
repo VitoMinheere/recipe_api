@@ -1,22 +1,26 @@
-from fastapi.testclient import TestClient
-from src.app.main import app
-from src.app.database import get_session
-from src.app.routes.recipes import Recipe, Ingredient, RecipeIngredientLink
 import pytest
-from sqlmodel import create_engine, Session, SQLModel, select
+from fastapi.testclient import TestClient
+from sqlmodel import Session, SQLModel, create_engine, select
 from sqlmodel.pool import StaticPool
 
+from src.app.database import get_session
+from src.app.main import app
+from src.app.routes.recipes import Ingredient, Recipe, RecipeIngredientLink
+
 client = TestClient(app)
+
 
 @pytest.fixture(name="session")
 def session_fixture():
     engine = create_engine(
-        "sqlite:///:memory:", 
-        connect_args={"check_same_thread": False}, 
-        poolclass=StaticPool)
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
+
 
 def test_create_recipe(session: Session):
     def get_session_override():
@@ -29,7 +33,7 @@ def test_create_recipe(session: Session):
         "ingredients": ["pasta", "eggs", "cheese", "bacon"],
         "instructions": "Cook pasta. Mix eggs and cheese. Add bacon. Combine.",
         "servings": 2,
-        "vegetarian": False
+        "vegetarian": False,
     }
 
     response = client.post("/recipes/", json=recipe_data)
@@ -58,4 +62,4 @@ def test_create_recipe(session: Session):
 
     # Verify links exist
     links = session.exec(select(RecipeIngredientLink)).all()
-    assert len(links) == len(recipe_data["ingredients"]) 
+    assert len(links) == len(recipe_data["ingredients"])
