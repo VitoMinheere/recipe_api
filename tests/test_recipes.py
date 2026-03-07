@@ -126,3 +126,19 @@ class TestRecipeFetch:
         response = client.get(f"/recipes/{recipe_id}")
         assert response.status_code == 200
         assert response.json()["name"] == db_recipe.name
+
+    def test_filter_by_vegetarian(self, session_with_data):
+        """Test filtering recipes by vegetarian status."""
+        def get_session_override():
+            return session_with_data
+
+        app.dependency_overrides[get_session] = get_session_override
+
+        # Test vegetarian recipes
+        response = client.get("/recipes/?vegetarian=true")
+        assert response.status_code == 200
+
+        recipes = response.json()
+        assert len(recipes) == 1 # One vegetarian recipe
+        recipe_names = [recipe["name"] for recipe in recipes]
+        assert "Vegetable Stir Fry" in recipe_names
