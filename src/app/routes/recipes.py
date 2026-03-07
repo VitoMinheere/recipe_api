@@ -76,12 +76,17 @@ def create_recipe(recipe_data: RecipeModel, session: Session = Depends(get_sessi
 @router.get("/", response_model=List[Recipe])
 def get_recipes(
     session: Session = Depends(get_session), 
-    vegetarian: Annotated[bool | None, Query(None, description="Filter by vegetarian status")] = None
+    vegetarian: Annotated[bool | None, Query(None, description="Filter by vegetarian status")] = None,
+    servings: Annotated[int | None, Query(None, description="Filter by number of servings")] = None
     ):
     """Get a list of all recipes."""
     query = select(Recipe)
+
     if vegetarian is not None:
         query = query.where(Recipe.vegetarian == vegetarian)
+    if servings is not None:
+        query = query.where(Recipe.servings == servings)
+
     recipes = session.exec(query).all()
     return recipes
 
