@@ -81,7 +81,7 @@ def get_recipes(
     include_ingredients: Annotated[str | None, Query(None, description="Filter by ingredients")] = None
     ):
     """Get a list of all recipes."""
-    query = select(Recipe)
+    query = select(Recipe).distinct()
 
     if vegetarian is not None:
         query = query.where(Recipe.vegetarian == vegetarian)
@@ -91,8 +91,8 @@ def get_recipes(
         include_list = include_ingredients.split(",")
         ingredients = session.exec(select(Ingredient).where(Ingredient.name.in_(include_list))).all()
         if ingredients:
-            for ingredient in ingredients:
-                query = query.join(RecipeIngredientLink).where(RecipeIngredientLink.ingredient_id == ingredient.id)
+            ingredient_ids = set(i.id for i in ingredients)
+            query = query.join(RecipeIngredientLink).where(RecipeIngredientLink.ingredient_id.in_(ingredient_ids))
         else:
             return []  # No matching ingredients, return empty list
 
