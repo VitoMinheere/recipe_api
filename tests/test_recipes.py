@@ -103,6 +103,7 @@ class TestRecipeFetch:
 
     def test_get_recipe_no_recipes(self, session: Session):
         """Test getting recipes when none exist."""
+
         def get_session_override():
             return session
 
@@ -114,6 +115,7 @@ class TestRecipeFetch:
 
     def test_get_recipe_by_id(self, session_with_data: Session):
         """Test getting a single recipe by ID."""
+
         def get_session_override():
             return session_with_data
 
@@ -129,6 +131,7 @@ class TestRecipeFetch:
 
     def test_filter_by_vegetarian(self, session_with_data):
         """Test filtering recipes by vegetarian status."""
+
         def get_session_override():
             return session_with_data
 
@@ -139,7 +142,7 @@ class TestRecipeFetch:
         assert response.status_code == 200
 
         recipes = response.json()
-        assert len(recipes) == 1 # One vegetarian recipe
+        assert len(recipes) == 1  # One vegetarian recipe
         recipe_names = [recipe["name"] for recipe in recipes]
         assert "Vegetable Stir Fry" in recipe_names
 
@@ -150,9 +153,10 @@ class TestRecipeFetch:
         assert len(recipes) == 2  # We expect 1 non-vegetarian recipe
         assert recipes[0]["name"] == "Pasta Carbonara"
         assert recipes[1]["name"] == "Salmon Bake"
-    
+
     def test_filter_by_servings(self, session_with_data):
         """Test filtering recipes by amount of servings."""
+
         def get_session_override():
             return session_with_data
 
@@ -163,12 +167,13 @@ class TestRecipeFetch:
         assert response.status_code == 200
 
         recipes = response.json()
-        assert len(recipes) == 1 # One vegetarian recipe
+        assert len(recipes) == 1  # One vegetarian recipe
         recipe_names = [recipe["name"] for recipe in recipes]
         assert "Vegetable Stir Fry" in recipe_names
 
     def test_filter_by_ingredients(self, session_with_data):
         """Test filtering recipes by ingredients."""
+
         def get_session_override():
             return session_with_data
 
@@ -179,7 +184,7 @@ class TestRecipeFetch:
         recipes = response.json()
         assert len(recipes) == 1  # Only one recipe with pasta
         assert recipes[0]["name"] == "Pasta Carbonara"
-        
+
         # Try with none existing ingredient
         response = client.get("/recipes/?include_ingredients=none_existing_ingredient")
         assert response.status_code == 200
@@ -195,6 +200,7 @@ class TestRecipeFetch:
 
     def test_filter_by_excluding_ingredient(self, session_with_data):
         """Test filtering recipes by excluding ingredients."""
+
         def get_session_override():
             return session_with_data
 
@@ -211,5 +217,3 @@ class TestRecipeFetch:
         assert response.status_code == 200
         recipes = response.json()
         assert len(recipes) == 0
-
-    

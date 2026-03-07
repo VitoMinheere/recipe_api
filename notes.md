@@ -19,4 +19,5 @@ Once I got the vegetarian filter working, the servings part was easy to add. THe
 
 "/recipes/?exclude_ingredients=pasta"
 
-I assumed it would only return the Vegetable Stir Fry as pasta was out but it still returned the pasta as eggs and vbacon were not excluded. My first approach to fix this was to get a list of recipe ids with the ingredient and filter those out. I could do this by getting the Ingredient id and getting the Recipe id which is connected to that Ingredient. After that I can query all Recipes excluding the list of ids.
+I assumed it would only return the Vegetable Stir Fry as pasta was out but it still returned the pasta as eggs and bacon were not excluded. My first approach to fix this was to get a list of recipe ids with the ingredient and filter those out. I could do this by getting the Ingredient id and getting the Recipe id which is connected to that Ingredient. After that I can query all Recipes excluding the list of ids.
+
