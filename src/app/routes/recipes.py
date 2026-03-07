@@ -78,7 +78,8 @@ def get_recipes(
     session: Session = Depends(get_session), 
     vegetarian: Annotated[bool | None, Query(None, description="Filter by vegetarian status")] = None,
     servings: Annotated[int | None, Query(None, description="Filter by number of servings")] = None,
-    include_ingredients: Annotated[str | None, Query(None, description="Filter by ingredients")] = None
+    include_ingredients: Annotated[str | None, Query(None, description="Filter by including ingredients")] = None,
+    exclude_ingredients: Annotated[str | None, Query(None, description="Filter by excluding ingredients")] = None
     ):
     """Get a list of all recipes."""
     query = select(Recipe).distinct()
@@ -87,6 +88,7 @@ def get_recipes(
         query = query.where(Recipe.vegetarian == vegetarian)
     if servings is not None:
         query = query.where(Recipe.servings == servings)
+
     if include_ingredients is not None:
         include_list = include_ingredients.split(",")
         ingredients = session.exec(select(Ingredient).where(Ingredient.name.in_(include_list))).all()
@@ -95,6 +97,14 @@ def get_recipes(
             query = query.join(RecipeIngredientLink).where(RecipeIngredientLink.ingredient_id.in_(ingredient_ids))
         else:
             return []  # No matching ingredients, return empty list
+
+    if exclude_ingredients is not None:
+        exclude_list = exclude_ingredients.split(",")
+        ingredients = session.exec(select(Ingredient).where(Ingredient.name.in_(exclude_list))).all()
+        if ingredients:
+            ingredient_ids = set(i.id for i in ingredients)
+            recipe_ids_with_excluded = session.exec(select(RecipeIngredientLink.recipe_id).where(RecipeIngredientLink.ingredient_id.in_(ingredient_ids))).all()
+            query = query.where(Recipe.id.not_in(recipe_ids_with_excluded))
 
     recipes = session.exec(query).all()
     return recipes

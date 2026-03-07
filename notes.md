@@ -14,3 +14,9 @@ Did not get the test for the rollback working due to issue with Mocking. Might g
 
 Second endpoint to work on was the GET. First to get all recipes and then to add the filtering on ingredients.
 Made another fixture to session with pre added Recipes and Ingredients to make it easier to test and to make sure I am not also testing the POST request in the GET test scenario's.
+
+Once I got the vegetarian filter working, the servings part was easy to add. THe including filter took some more time but due to the link table setup I could use the logical approach of getting the Ingredient ids and then filtering over them. For the exclude list this caused issues because I did the following test:
+
+"/recipes/?exclude_ingredients=pasta"
+
+I assumed it would only return the Vegetable Stir Fry as pasta was out but it still returned the pasta as eggs and vbacon were not excluded. My first approach to fix this was to get a list of recipe ids with the ingredient and filter those out. I could do this by getting the Ingredient id and getting the Recipe id which is connected to that Ingredient. After that I can query all Recipes excluding the list of ids.
