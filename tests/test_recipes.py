@@ -99,7 +99,7 @@ class TestRecipeFetch:
 
         assert response.status_code == 200
         assert isinstance(response.json(), list)
-        assert len(recipes) == 2
+        assert len(recipes) == 3
 
     def test_get_recipe_no_recipes(self, session: Session):
         """Test getting recipes when none exist."""
@@ -147,8 +147,9 @@ class TestRecipeFetch:
         response = client.get("/recipes/?vegetarian=false")
         assert response.status_code == 200
         recipes = response.json()
-        assert len(recipes) == 1  # We expect 1 non-vegetarian recipe
+        assert len(recipes) == 2  # We expect 1 non-vegetarian recipe
         assert recipes[0]["name"] == "Pasta Carbonara"
+        assert recipes[1]["name"] == "Salmon Bake"
     
     def test_filter_by_servings(self, session_with_data):
         """Test filtering recipes by amount of servings."""
@@ -185,11 +186,11 @@ class TestRecipeFetch:
         recipes = response.json()
         assert len(recipes) == 0
 
-        response = client.get("/recipes/?include_ingredients=pasta,eggs")
+        response = client.get("/recipes/?include_ingredients=potatoes,onion")
         assert response.status_code == 200
         recipes = response.json()
-        assert len(recipes) == 1  # Only one recipe with pasta
-        assert recipes[0]["name"] == "Pasta Carbonara"
+        assert len(recipes) == 1  # Only one recipe with potatoes and onion
+        assert recipes[0]["name"] == "Vegetable Stir Fry"
 
     def test_filter_by_excluding_ingredient(self, session_with_data):
         """Test filtering recipes by excluding ingredients."""
@@ -201,10 +202,13 @@ class TestRecipeFetch:
         response = client.get("/recipes/?exclude_ingredients=pasta")
         assert response.status_code == 200
         recipes = response.json()
-        assert len(recipes) == 1  # Only one recipe without pasta
+        assert len(recipes) == 2  # Two recipes without pasta
         assert recipes[0]["name"] == "Vegetable Stir Fry"
+        assert recipes[1]["name"] == "Salmon Bake"
 
-        response = client.get("/recipes/?exclude_ingredients=pasta,onion")
+        response = client.get("/recipes/?exclude_ingredients=pasta,onion,salmon")
         assert response.status_code == 200
         recipes = response.json()
         assert len(recipes) == 0
+
+    
