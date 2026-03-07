@@ -1,13 +1,13 @@
 import logging
-from typing import List
+from typing import List, Annotated
 
-from fastapi import Annotated, APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from src.app.database.models import Ingredient, Recipe, RecipeIngredientLink
 from src.app.database.session import get_session
-from src.app.services.recipe_services import create_links, upsert_ingredients
+from src.app.services.recipe_services import create_links, upsert_ingredients, get_ingredients_by_names
 
 router = APIRouter()
 
@@ -75,16 +75,16 @@ def create_recipe(recipe_data: RecipeModel, session: Session = Depends(get_sessi
 def get_recipes(
     session: Session = Depends(get_session),
     vegetarian: Annotated[
-        bool | None, Query(None, description="Filter by vegetarian status")
+        bool | None, Query(description="Filter by vegetarian status")
     ] = None,
     servings: Annotated[
-        int | None, Query(None, description="Filter by number of servings")
+        int | None, Query(description="Filter by number of servings")
     ] = None,
     include_ingredients: Annotated[
-        str | None, Query(None, description="Filter by including ingredients")
+        str | None, Query(description="Filter by including ingredients")
     ] = None,
     exclude_ingredients: Annotated[
-        str | None, Query(None, description="Filter by excluding ingredients")
+        str | None, Query(description="Filter by excluding ingredients")
     ] = None,
 ):
     """Get a list of all recipes."""
@@ -96,11 +96,7 @@ def get_recipes(
         query = query.where(Recipe.servings == servings)
 
     if include_ingredients is not None:
-        include_list = include_ingredients.split(",")
-        ingredients = session.exec(
-            select(Ingredient).where(Ingredient.name.in_(include_list))
-        ).all()
-        if ingredients:
+        if ingredients := get_ingredients_by_names(session, include_ingredients.split(",")):
             ingredient_ids = set(i.id for i in ingredients)
             query = query.join(RecipeIngredientLink).where(
                 RecipeIngredientLink.ingredient_id.in_(ingredient_ids)
@@ -109,11 +105,7 @@ def get_recipes(
             return []  # No matching ingredients, return empty list
 
     if exclude_ingredients is not None:
-        exclude_list = exclude_ingredients.split(",")
-        ingredients = session.exec(
-            select(Ingredient).where(Ingredient.name.in_(exclude_list))
-        ).all()
-        if ingredients:
+        if ingredients := get_ingredients_by_names(session, exclude_ingredients.split(",")):
             ingredient_ids = set(i.id for i in ingredients)
             recipe_ids_with_excluded = session.exec(
                 select(RecipeIngredientLink.recipe_id).where(

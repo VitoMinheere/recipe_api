@@ -49,3 +49,14 @@ def create_links(
         logger.error(f"Error creating links for recipe {recipe_id}: {e}")
         session.rollback()
         raise
+
+def get_ingredients_by_names(session: Session, ingredient_names: List[str]) -> List[Ingredient]:
+    """Fetch ingredients by their names."""
+    try:
+        ingredients = session.exec(
+            select(Ingredient).where(Ingredient.name.in_(ingredient_names))
+        ).all()
+        return ingredients
+    except Exception as e:
+        logger.error(f"Error fetching ingredients by names {ingredient_names}: {e}")
+        raise
