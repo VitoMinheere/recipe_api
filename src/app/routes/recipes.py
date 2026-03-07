@@ -1,7 +1,7 @@
 import logging
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -22,6 +22,8 @@ class RecipeModel(BaseModel):
     servings: int
     vegetarian: bool
 
+class RecipeFilter(BaseModel):
+    vegetarian: Optional[bool] = None
 
 @router.post(
     "/",
@@ -63,7 +65,7 @@ def create_recipe(recipe_data: RecipeModel, session: Session = Depends(get_sessi
         return recipe
 
     except Exception as e:
-        print(e)
+        logger.error(f"Error creating recipe: {e}")
         session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -72,9 +74,15 @@ def create_recipe(recipe_data: RecipeModel, session: Session = Depends(get_sessi
 
 
 @router.get("/", response_model=List[Recipe])
-def get_recipes(session: Session = Depends(get_session)):
+def get_recipes(
+    session: Session = Depends(get_session), 
+    vegetarian: Annotated[bool | None, Query(None, description="Filter by vegetarian status")] = None
+    ):
     """Get a list of all recipes."""
-    recipes = session.exec(select(Recipe)).all()
+    query = select(Recipe)
+    if vegetarian:
+        query = query.where(Recipe.vegetarian == vegetarian)
+    recipes = session.exec(query).all()
     return recipes
 
 @router.get("/{recipe_id}", response_model=Recipe)
