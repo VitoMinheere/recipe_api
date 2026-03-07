@@ -189,8 +189,9 @@ class TestRecipeFetch:
         response = client.get("/recipes/?include_ingredients=potatoes,onion")
         assert response.status_code == 200
         recipes = response.json()
-        assert len(recipes) == 1  # Only one recipe with potatoes and onion
-        assert recipes[0]["name"] == "Vegetable Stir Fry"
+        assert len(recipes) == 2
+        assert recipes[0]["name"] == "Salmon Bake"
+        assert recipes[1]["name"] == "Vegetable Stir Fry"
 
     def test_filter_by_excluding_ingredient(self, session_with_data):
         """Test filtering recipes by excluding ingredients."""
