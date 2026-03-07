@@ -34,8 +34,9 @@ def session_with_data_fixture():
         bacon = Ingredient(name="bacon")
         potatoes = Ingredient(name="potatoes")
         onion = Ingredient(name="onion")
+        salmon = Ingredient(name="salmon")
 
-        session.add_all([pasta, eggs, bacon, potatoes, onion])
+        session.add_all([pasta, eggs, bacon, potatoes, onion, salmon])
         session.commit()
 
         # Create recipes
@@ -51,8 +52,14 @@ def session_with_data_fixture():
             servings=3,
             vegetarian=True,
         )
+        salmon_bake = Recipe(
+            name="Salmon Bake",
+            instructions="Bake salmon with potato and herbs.",
+            servings=4,
+            vegetarian=False,
+        )
 
-        session.add_all([carbonara, stir_fry])
+        session.add_all([carbonara, stir_fry, salmon_bake])
         session.commit()
 
         # Create links
@@ -65,13 +72,18 @@ def session_with_data_fixture():
             RecipeIngredientLink(recipe_id=stir_fry.id, ingredient_id=potatoes.id),
             RecipeIngredientLink(recipe_id=stir_fry.id, ingredient_id=onion.id),
         ]
+        salmon_bake_links = [
+            RecipeIngredientLink(recipe_id=salmon_bake.id, ingredient_id=potatoes.id),
+            RecipeIngredientLink(recipe_id=salmon_bake.id, ingredient_id=salmon.id),
+        ]
 
-        session.add_all(carbonara_links + stir_fry_links)
+        session.add_all(carbonara_links + stir_fry_links + salmon_bake_links)
         session.commit()
 
         # Refresh objects to load relationships
         session.refresh(carbonara)
         session.refresh(stir_fry)
+        session.refresh(salmon_bake)
 
         yield session
 
