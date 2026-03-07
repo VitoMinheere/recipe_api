@@ -112,8 +112,12 @@ class TestRecipeFetch:
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_get_recipe_by_id(self, session_with_data):
+    def test_get_recipe_by_id(self, session_with_data: Session):
         """Test getting a single recipe by ID."""
+        def get_session_override():
+            return session_with_data
+
+        app.dependency_overrides[get_session] = get_session_override
         # Get the first recipe from the database
         db_recipe = session_with_data.exec(select(Recipe)).first()
         recipe_id = db_recipe.id
