@@ -80,7 +80,7 @@ def get_recipes(
     ):
     """Get a list of all recipes."""
     query = select(Recipe)
-    if vegetarian:
+    if vegetarian is not None:
         query = query.where(Recipe.vegetarian == vegetarian)
     recipes = session.exec(query).all()
     return recipes
