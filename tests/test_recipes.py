@@ -184,3 +184,9 @@ class TestRecipeFetch:
         assert response.status_code == 200
         recipes = response.json()
         assert len(recipes) == 0
+
+        response = client.get("/recipes/?include_ingredients=pasta,eggs")
+        assert response.status_code == 200
+        recipes = response.json()
+        assert len(recipes) == 1  # Only one recipe with pasta
+        assert recipes[0]["name"] == "Pasta Carbonara"
