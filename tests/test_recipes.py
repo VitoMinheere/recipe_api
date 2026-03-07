@@ -165,3 +165,16 @@ class TestRecipeFetch:
         assert len(recipes) == 1 # One vegetarian recipe
         recipe_names = [recipe["name"] for recipe in recipes]
         assert "Vegetable Stir Fry" in recipe_names
+
+    def test_filter_by_ingredient(self, session_with_data):
+        """Test filtering recipes by ingredient."""
+        def get_session_override():
+            return session_with_data
+
+        app.dependency_overrides[get_session] = get_session_override
+
+        response = client.get("/recipes/?include_ingredients=pasta")
+        assert response.status_code == 200
+        recipes = response.json()
+        assert len(recipes) == 1  # Only one recipe with pasta
+        assert recipes[0]["name"] == "Pasta Carbonara"
