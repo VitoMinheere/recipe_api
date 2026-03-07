@@ -76,3 +76,15 @@ def get_recipes(session: Session = Depends(get_session)):
     """Get a list of all recipes."""
     recipes = session.exec(select(Recipe)).all()
     return recipes
+
+@router.get("/{recipe_id}", response_model=Recipe)
+def get_recipe(recipe_id: int, session: Session = Depends(get_session)):
+    """Get a single recipe by ID."""
+    recipe = session.exec(select(Recipe).where(Recipe.id == recipe_id)).first()
+    if not recipe:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Recipe not found",
+        )
+    return recipe
+
