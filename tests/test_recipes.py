@@ -178,3 +178,9 @@ class TestRecipeFetch:
         recipes = response.json()
         assert len(recipes) == 1  # Only one recipe with pasta
         assert recipes[0]["name"] == "Pasta Carbonara"
+        
+        # Try with none existing ingredient
+        response = client.get("/recipes/?include_ingredients=none_existing_ingredient")
+        assert response.status_code == 200
+        recipes = response.json()
+        assert len(recipes) == 0

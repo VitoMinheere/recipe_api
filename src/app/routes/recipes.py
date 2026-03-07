@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from src.app.database.models import Recipe
+from src.app.database.models import Recipe, Ingredient, RecipeIngredientLink
 from src.app.database.session import get_session
 from src.app.services.recipe_services import create_links, upsert_ingredients
 
@@ -77,7 +77,8 @@ def create_recipe(recipe_data: RecipeModel, session: Session = Depends(get_sessi
 def get_recipes(
     session: Session = Depends(get_session), 
     vegetarian: Annotated[bool | None, Query(None, description="Filter by vegetarian status")] = None,
-    servings: Annotated[int | None, Query(None, description="Filter by number of servings")] = None
+    servings: Annotated[int | None, Query(None, description="Filter by number of servings")] = None,
+    include_ingredients: Annotated[str | None, Query(None, description="Filter by ingredients")] = None
     ):
     """Get a list of all recipes."""
     query = select(Recipe)
@@ -86,6 +87,14 @@ def get_recipes(
         query = query.where(Recipe.vegetarian == vegetarian)
     if servings is not None:
         query = query.where(Recipe.servings == servings)
+    if include_ingredients is not None:
+        include_list = include_ingredients.split(",")
+        ingredients = session.exec(select(Ingredient).where(Ingredient.name.in_(include_list))).all()
+        if ingredients:
+            for ingredient in ingredients:
+                query = query.join(RecipeIngredientLink).where(RecipeIngredientLink.ingredient_id == ingredient.id)
+        else:
+            return []  # No matching ingredients, return empty list
 
     recipes = session.exec(query).all()
     return recipes
