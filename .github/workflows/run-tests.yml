@@ -27,10 +27,6 @@ jobs:
       run: |
         uv pip install --system pytest pytest-sugar
 
-    - name: Install project in development mode
-      run: |
-        uv pip install -e .
-
     - name: Run tests
       run: |
         pytest tests/ -v
