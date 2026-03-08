@@ -306,3 +306,13 @@ class TestRecipeDelete:
             select(RecipeIngredientLink).where(RecipeIngredientLink.recipe_id == recipe_id)
         ).all()
         assert len(links) == 0
+
+    def test_delete_nonexistent_recipe(self, session_with_data: Session):
+        """Test deleting a non-existent recipe."""
+        def get_session_override():
+            return session_with_data
+
+        app.dependency_overrides[get_session] = get_session_override
+        # Use a non-existent ID (e.g., 9999)
+        response = client.delete("/recipes/9999")
+        assert response.status_code == 404  # Not Found
