@@ -25,7 +25,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        uv pip install --system pytest pytest-sugar
+        uv sync
 
     - name: Run tests
       run: |
