@@ -1,19 +1,20 @@
-from typing import List
 import logging
+from typing import List, Annotated
 
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlmodel import select
+from sqlmodel import Session, select
 
+from src.app.database.models import Ingredient, Recipe, RecipeIngredientLink
 from src.app.database.session import get_session
-from src.app.database.models import Recipe, Ingredient, RecipeIngredientLink
-from src.app.services.recipe_services import upsert_ingredients, create_links
+from src.app.services.recipe_services import create_links, upsert_ingredients, get_ingredients_by_names
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-class RecipeCreate(BaseModel):
+
+class RecipeModel(BaseModel):
     id: int | None = None
     name: str
     ingredients: List[str]
@@ -32,7 +33,7 @@ class RecipeCreate(BaseModel):
         500: {"description": "Internal server error"},
     },
 )
-def create_recipe(recipe_data: RecipeCreate, session: Session = Depends(get_session)):
+def create_recipe(recipe_data: RecipeModel, session: Session = Depends(get_session)):
     """
     Create a new recipe with ingredients.
 
@@ -60,11 +61,73 @@ def create_recipe(recipe_data: RecipeCreate, session: Session = Depends(get_sess
         # Reload the recipe for response
         session.refresh(recipe)
         return recipe
-    
+
     except Exception as e:
-        print(e)
+        logger.error(f"Error creating recipe: {e}")
         session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create recipe: {str(e)}",
         )
+
+
+@router.get("/", response_model=List[Recipe])
+def get_recipes(
+    session: Session = Depends(get_session),
+    vegetarian: Annotated[
+        bool | None, Query(description="Filter by vegetarian status")
+    ] = None,
+    servings: Annotated[
+        int | None, Query(description="Filter by number of servings")
+    ] = None,
+    include_ingredients: Annotated[
+        str | None, Query(description="Filter by including ingredients")
+    ] = None,
+    exclude_ingredients: Annotated[
+        str | None, Query(description="Filter by excluding ingredients")
+    ] = None,
+    search: Annotated[str | None, Query(description="Search text in instructions")] = None
+):
+    """Get a list of all recipes."""
+    query = select(Recipe).distinct()
+
+    if vegetarian is not None:
+        query = query.where(Recipe.vegetarian == vegetarian)
+    if servings is not None:
+        query = query.where(Recipe.servings == servings)
+    if search:
+        query = query.where(Recipe.instructions.ilike(f"%{search}%"))
+
+    if include_ingredients is not None:
+        if ingredients := get_ingredients_by_names(session, include_ingredients.split(",")):
+            ingredient_ids = set(i.id for i in ingredients)
+            query = query.join(RecipeIngredientLink).where(
+                RecipeIngredientLink.ingredient_id.in_(ingredient_ids)
+            )
+        else:
+            return []  # No matching ingredients, return empty list
+
+    if exclude_ingredients is not None:
+        if ingredients := get_ingredients_by_names(session, exclude_ingredients.split(",")):
+            ingredient_ids = set(i.id for i in ingredients)
+            recipe_ids_with_excluded = session.exec(
+                select(RecipeIngredientLink.recipe_id).where(
+                    RecipeIngredientLink.ingredient_id.in_(ingredient_ids)
+                )
+            ).all()
+            query = query.where(Recipe.id.not_in(recipe_ids_with_excluded))
+
+    recipes = session.exec(query).all()
+    return recipes
+
+
+@router.get("/{recipe_id}", response_model=Recipe)
+def get_recipe(recipe_id: int, session: Session = Depends(get_session)):
+    """Get a single recipe by ID."""
+    recipe = session.exec(select(Recipe).where(Recipe.id == recipe_id)).first()
+    if not recipe:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Recipe not found",
+        )
+    return recipe

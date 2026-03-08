@@ -1,0 +1,23 @@
+name: Run Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+  
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
+
+      - name: Run tests with coverage
+        run: uv run pytest tests --cov=src --cov-report=xml --cov-report=term
