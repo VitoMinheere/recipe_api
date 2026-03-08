@@ -236,6 +236,13 @@ class TestRecipeFetch:
         recipes = response.json()
         assert len(recipes) == 1  # Only Salmon Bake
         assert recipes[0]["name"] == "Salmon Bake"
+        
+        # All recipes with potatoes in ingredients and "oven" in instructions
+        response = client.get("/recipes/?include_ingredients=potatoes&search=oven")
+        assert response.status_code == 200
+        recipes = response.json()
+        assert len(recipes) == 1  # Only Salmon Bake
+        assert recipes[0]["name"] == "Salmon Bake"
 
     def test_search_instructions(self, session_with_data):
         """Test searching recipes by instructions text."""
