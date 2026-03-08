@@ -200,7 +200,6 @@ class TestRecipeFetch:
 
     def test_filter_by_excluding_ingredient(self, session_with_data):
         """Test filtering recipes by excluding ingredients."""
-
         def get_session_override():
             return session_with_data
 
@@ -217,3 +216,23 @@ class TestRecipeFetch:
         assert response.status_code == 200
         recipes = response.json()
         assert len(recipes) == 0
+
+    def test_combined_filters(self, session_with_data):
+        """Test combining multiple filters."""
+        def get_session_override():
+            return session_with_data
+
+        app.dependency_overrides[get_session] = get_session_override
+        # Vegetarian recipes that don't include pasta
+        response = client.get("/recipes/?vegetarian=true&exclude_ingredients=pasta")
+        assert response.status_code == 200
+        recipes = response.json()
+        assert len(recipes) == 1  # Only Vegetable Stir Fry
+        assert recipes[0]["name"] == "Vegetable Stir Fry"
+
+        # Non Vegetarian recipes that don't include pasta
+        response = client.get("/recipes/?vegetarian=false&exclude_ingredients=pasta")
+        assert response.status_code == 200
+        recipes = response.json()
+        assert len(recipes) == 1  # Only Salmon Bake
+        assert recipes[0]["name"] == "Salmon Bake"
