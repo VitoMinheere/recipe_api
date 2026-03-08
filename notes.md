@@ -21,3 +21,6 @@ Once I got the vegetarian filter working, the servings part was easy to add. THe
 
 I assumed it would only return the Vegetable Stir Fry as pasta was out but it still returned the pasta as eggs and bacon were not excluded. My first approach to fix this was to get a list of recipe ids with the ingredient and filter those out. I could do this by getting the Ingredient id and getting the Recipe id which is connected to that Ingredient. After that I can query all Recipes excluding the list of ids.
 
+After setting up the include and exclude filters it was then up to the unit tests to prove that combining them also works. As all the filter wind up as WHERE clauses, none of them should clash and it would be simple to pinpoint the result.
+
+Last part in the GET was the search in text. I opted for a basic text search due to time constraints and simplicity. Ideally there would be a setup with a dedicated table which is optimized for text search with a link to the Recipe id. However this would require an extra call whenever the instructions of a Recipe get updated.
