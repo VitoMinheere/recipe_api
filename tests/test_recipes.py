@@ -231,7 +231,7 @@ class TestRecipeFetch:
         assert recipes[0]["name"] == "Vegetable Stir Fry"
 
         # Non Vegetarian recipes that don't include pasta
-        response = client.get("/recipes/?vegetarian=false&exclude_ingredients=pasta")
+        response = client.get("/recipes/?vegetarian=false&exclude_ingredients=pasta&include_ingredients=potatoes")
         assert response.status_code == 200
         recipes = response.json()
         assert len(recipes) == 1  # Only Salmon Bake
