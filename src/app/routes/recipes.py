@@ -131,3 +131,33 @@ def get_recipe(recipe_id: int, session: Session = Depends(get_session)):
             detail="Recipe not found",
         )
     return recipe
+
+
+@router.delete("/{recipe_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_recipe(
+    recipe_id: int,
+    session: Session = Depends(get_session)
+):
+    """Delete a recipe and its ingredient associations."""
+    # Get the recipe
+    recipe = session.get(Recipe, recipe_id)
+    if not recipe:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Recipe not found"
+        )
+
+    # Delete all ingredient links for this recipe
+    links = session.exec(
+        select(RecipeIngredientLink)
+        .where(RecipeIngredientLink.recipe_id == recipe_id)
+    ).all()
+
+    for link in links:
+        session.delete(link)
+
+    # Delete the recipe
+    session.delete(recipe)
+    session.commit()
+
+    return None  # 204 No Content

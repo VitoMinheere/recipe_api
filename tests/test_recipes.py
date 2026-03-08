@@ -270,3 +270,54 @@ class TestRecipeFetch:
         recipes = response.json()
         assert len(recipes) == 1  # Only one recipe with "pasta" in instructions
         assert recipes[0]["name"] == "Pasta Carbonara"
+
+@pytest.mark.usefixtures("session_with_data")
+class TestRecipeDelete:
+    """Tests for the /recipe/{} DELETE endpoint."""
+
+    def test_delete_recipe_success(self, session_with_data: Session):
+        """Test successfully deleting a recipe."""
+        def get_session_override():
+            return session_with_data
+
+        app.dependency_overrides[get_session] = get_session_override
+        # Get an existing recipe from the database
+        db_recipe = session_with_data.exec(select(Recipe)).first()
+        ingredients_before = session_with_data.exec(select(Ingredient)).all()
+        recipe_id = db_recipe.id
+
+        # Verify the recipe exists before deletion
+        response = client.get(f"/recipes/{recipe_id}")
+        assert response.status_code == 200
+
+        # Delete the recipe
+        response = client.delete(f"/recipes/{recipe_id}")
+        assert response.status_code == 204  # No Content
+
+        # Verify the recipe no longer exists
+        response = client.get(f"/recipes/{recipe_id}")
+        assert response.status_code == 404  # Not Found
+
+        # Verify the recipe is removed from the database
+        db_recipe = session_with_data.get(Recipe, recipe_id)
+        assert db_recipe is None
+
+        # Verify the links are also removed
+        links = session_with_data.exec(
+            select(RecipeIngredientLink).where(RecipeIngredientLink.recipe_id == recipe_id)
+        ).all()
+        assert len(links) == 0
+
+        # Check that ingredients are not deleted (since they may be shared with other recipes)
+        ingredients_after = session_with_data.exec(select(Ingredient)).all()
+        assert len(ingredients_after) == len(ingredients_before)
+
+    def test_delete_nonexistent_recipe(self, session_with_data: Session):
+        """Test deleting a non-existent recipe."""
+        def get_session_override():
+            return session_with_data
+
+        app.dependency_overrides[get_session] = get_session_override
+        # Use a non-existent ID (e.g., 9999)
+        response = client.delete("/recipes/9999")
+        assert response.status_code == 404  # Not Found
