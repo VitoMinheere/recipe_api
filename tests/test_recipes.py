@@ -236,3 +236,30 @@ class TestRecipeFetch:
         recipes = response.json()
         assert len(recipes) == 1  # Only Salmon Bake
         assert recipes[0]["name"] == "Salmon Bake"
+
+    def test_search_instructions(self, session_with_data):
+        """Test searching recipes by instructions text."""
+        def get_session_override():
+            return session_with_data
+
+        app.dependency_overrides[get_session] = get_session_override
+        # Test recipes with "soy" in instructions
+        response = client.get("/recipes/?search=soy")
+        assert response.status_code == 200
+        recipes = response.json()
+        assert len(recipes) == 1  # Only one recipe with "soy" in instructions
+        assert recipes[0]["name"] == "Vegetable Stir Fry"
+
+        # Test recipes with "oven" in instructions
+        response = client.get("/recipes/?search=oven")
+        assert response.status_code == 200
+        recipes = response.json()
+        assert len(recipes) == 1  # Only one recipe with "oven" in instructions
+        assert recipes[0]["name"] == "Salmon Bake"
+
+        # Test case-insensitive search
+        response = client.get("/recipes/?search=PASTA")
+        assert response.status_code == 200
+        recipes = response.json()
+        assert len(recipes) == 1  # Only one recipe with "pasta" in instructions
+        assert recipes[0]["name"] == "Pasta Carbonara"

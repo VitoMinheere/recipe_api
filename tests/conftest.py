@@ -54,7 +54,7 @@ def session_with_data_fixture():
         )
         salmon_bake = Recipe(
             name="Salmon Bake",
-            instructions="Bake salmon with potato and herbs.",
+            instructions="Bake salmon with potato and herbs in oven.",
             servings=4,
             vegetarian=False,
         )
