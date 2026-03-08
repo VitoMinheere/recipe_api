@@ -86,6 +86,7 @@ def get_recipes(
     exclude_ingredients: Annotated[
         str | None, Query(description="Filter by excluding ingredients")
     ] = None,
+    search: Annotated[str | None, Query(description="Search text in instructions")] = None
 ):
     """Get a list of all recipes."""
     query = select(Recipe).distinct()
@@ -94,6 +95,8 @@ def get_recipes(
         query = query.where(Recipe.vegetarian == vegetarian)
     if servings is not None:
         query = query.where(Recipe.servings == servings)
+    if search:
+        query = query.where(Recipe.instructions.ilike(f"%{search}%"))
 
     if include_ingredients is not None:
         if ingredients := get_ingredients_by_names(session, include_ingredients.split(",")):
