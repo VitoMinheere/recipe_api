@@ -283,6 +283,7 @@ class TestRecipeDelete:
         app.dependency_overrides[get_session] = get_session_override
         # Get an existing recipe from the database
         db_recipe = session_with_data.exec(select(Recipe)).first()
+        ingredients_before = session_with_data.exec(select(Ingredient)).all()
         recipe_id = db_recipe.id
 
         # Verify the recipe exists before deletion
@@ -306,6 +307,10 @@ class TestRecipeDelete:
             select(RecipeIngredientLink).where(RecipeIngredientLink.recipe_id == recipe_id)
         ).all()
         assert len(links) == 0
+
+        # Check that ingredients are not deleted (since they may be shared with other recipes)
+        ingredients_after = session_with_data.exec(select(Ingredient)).all()
+        assert len(ingredients_after) == len(ingredients_before)
 
     def test_delete_nonexistent_recipe(self, session_with_data: Session):
         """Test deleting a non-existent recipe."""
