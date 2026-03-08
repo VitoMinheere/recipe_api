@@ -270,3 +270,39 @@ class TestRecipeFetch:
         recipes = response.json()
         assert len(recipes) == 1  # Only one recipe with "pasta" in instructions
         assert recipes[0]["name"] == "Pasta Carbonara"
+
+@pytest.mark.usefixtures("session_with_data")
+class TestRecipeDelete:
+    """Tests for the /recipe/{} DELETE endpoint."""
+
+    def test_delete_recipe_success(self, session_with_data: Session):
+        """Test successfully deleting a recipe."""
+        def get_session_override():
+            return session_with_data
+
+        app.dependency_overrides[get_session] = get_session_override
+        # Get an existing recipe from the database
+        db_recipe = session_with_data.exec(select(Recipe)).first()
+        recipe_id = db_recipe.id
+
+        # Verify the recipe exists before deletion
+        response = client.get(f"/recipes/{recipe_id}")
+        assert response.status_code == 200
+
+        # Delete the recipe
+        response = client.delete(f"/recipes/{recipe_id}")
+        assert response.status_code == 204  # No Content
+
+        # Verify the recipe no longer exists
+        response = client.get(f"/recipes/{recipe_id}")
+        assert response.status_code == 404  # Not Found
+
+        # Verify the recipe is removed from the database
+        db_recipe = session_with_data.get(Recipe, recipe_id)
+        assert db_recipe is None
+
+        # Verify the links are also removed
+        links = session_with_data.exec(
+            select(RecipeIngredientLink).where(RecipeIngredientLink.recipe_id == recipe_id)
+        ).all()
+        assert len(links) == 0
