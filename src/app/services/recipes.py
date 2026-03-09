@@ -50,7 +50,10 @@ def create_links(
         session.rollback()
         raise
 
-def get_ingredients_by_names(session: Session, ingredient_names: List[str]) -> List[Ingredient]:
+
+def get_ingredients_by_names(
+    session: Session, ingredient_names: List[str]
+) -> List[Ingredient]:
     """Fetch ingredients by their names."""
     try:
         ingredients = session.exec(
