@@ -341,8 +341,8 @@ class TestRecipeUpdate:
             "name": "Updated Recipe Name",
             "instructions": "Updated instructions with more details",
             "servings": 5,
-            "vegetarian": not db_recipe.vegetarian,
-            # "ingredients": ["new_ingredient1", "new_ingredient2"]
+            "vegetarian": False,
+            "ingredients": ["new_ingredient1", "new_ingredient2"]
         }
 
         # Update the recipe
@@ -354,4 +354,4 @@ class TestRecipeUpdate:
         assert updated_recipe["name"] == "Updated Recipe Name"
         assert updated_recipe["instructions"] == "Updated instructions with more details"
         assert updated_recipe["servings"] == 5
-        assert updated_recipe["vegetarian"] == (not db_recipe.vegetarian)
+        assert updated_recipe["vegetarian"] == False

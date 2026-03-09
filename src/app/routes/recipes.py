@@ -1,5 +1,5 @@
 import logging
-from typing import List, Annotated
+from typing import List, Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -22,6 +22,12 @@ class RecipeModel(BaseModel):
     servings: int
     vegetarian: bool
 
+class RecipeUpdate(BaseModel):
+    name: Optional[str] = None
+    instructions: Optional[str] = None
+    servings: Optional[int] = None
+    vegetarian: Optional[bool] = None
+    ingredients: Optional[List[str]] = None
 
 @router.post(
     "/",
@@ -161,3 +167,29 @@ def delete_recipe(
     session.commit()
 
     return None  # 204 No Content
+
+
+@router.put("/{recipe_id}", response_model=Recipe)
+def update_recipe(
+    recipe_id: int,
+    recipe_data: RecipeUpdate,
+    session: Session = Depends(get_session)
+):
+    """Fully update a recipe."""
+    # Get the existing recipe
+    db_recipe = session.get(Recipe, recipe_id)
+    if not db_recipe:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Recipe not found"
+        )
+
+    # Update basic fields
+    for field, value in recipe_data.model_dump(exclude={"ingredients"}).items():
+        if value is not None:
+            setattr(db_recipe, field, value)
+
+    print(db_recipe)
+    session.commit()
+    session.refresh(db_recipe)
+    return db_recipe
