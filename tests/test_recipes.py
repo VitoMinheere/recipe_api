@@ -40,7 +40,6 @@ class TestRecipeCreation:
         # Assert the response is correct
         assert response.status_code == 201
         created_recipe = response.json()
-        print(created_recipe)
         assert created_recipe["name"] == "Pasta Carbonara"
         assert created_recipe["servings"] == 2
         assert created_recipe["vegetarian"] is False
