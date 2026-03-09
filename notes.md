@@ -27,4 +27,6 @@ Last part in the GET was the search in text. I opted for a basic text search due
 
 ## Update Recipe
 
-For the PUT/PATCH I first went for updating the Recipe object and then later on also taking care of the Ingredients and RecipeIngredientsLink. The PAtch should not delete Ingredients as they can be used by different Recipes, it should only delete the Links. This approach could lead to orphaned Ingredients in the table but a daily or weekly scan for Ingredients not in the RecipeIngredientsLink and then cleaning them up could fix that.
+For the PUT/PATCH I first went for updating the Recipe object and then later on also taking care of the Ingredients and RecipeIngredientsLink. I opted for an endpoint where the full object can be updated at once or just one of the fields. The PAtch should not delete Ingredients as they can be used by different Recipes, it should only delete the Links. This approach could lead to orphaned Ingredients in the table but a daily or weekly scan for Ingredients not in the RecipeIngredientsLink and then cleaning them up could fix that.
+
+While creating the unit tests for the Patch, I noticed I missed a test case for when the ingredients in a Recipe are empty. I added that in with a field_validator and then also added validation on the other fields.

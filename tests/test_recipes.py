@@ -12,13 +12,17 @@ client = TestClient(app)
 @pytest.mark.usefixtures("session")
 class TestRecipeCreation:
     """Tests for the /recipes/ POST endpoint."""
-
-    def test_create_recipe(self, session: Session):
+    @pytest.fixture(autouse=True)
+    def setup_dependency_override(self, session: Session):
+        """Override the get_session dependency for all tests in this class."""
         def get_session_override():
             return session
 
         app.dependency_overrides[get_session] = get_session_override
+        yield
+        app.dependency_overrides.clear()
 
+    def test_create_recipe(self, session: Session):
         recipe_data = {
             "name": "Pasta Carbonara",
             "ingredients": ["pasta", "eggs", "cheese", "bacon"],
@@ -64,6 +68,18 @@ class TestRecipeCreation:
         response = client.post("/recipes/", json=invalid_data)
         assert response.status_code == 422
 
+    def test_create_recipe_empty_ingredients(self):
+        """Test 422 error for empty ingredients list."""
+        invalid_data = {
+            "name": "Incomplete Recipe",
+            "ingredients": [],
+            "instructions": "Test instructions",
+            "servings": 1,
+            "vegetarian": True,
+        }
+        response = client.post("/recipes/", json=invalid_data)
+        assert response.status_code == 422
+
     def test_create_recipe_server_error(self, mocker, session: Session):
         """Test 500 error on database failure."""
         mocker.patch(
@@ -85,15 +101,18 @@ class TestRecipeCreation:
 @pytest.mark.usefixtures("session_with_data")
 class TestRecipeFetch:
     """Tests for the /recipes/{} GET endpoint."""
-
-    def test_get_recipe(self, session_with_data: Session):
-        """Test getting a list of recipes."""
-
+    @pytest.fixture(autouse=True)
+    def setup_dependency_override(self, session_with_data: Session):
+        """Override the get_session dependency for all tests in this class."""
         def get_session_override():
             return session_with_data
 
         app.dependency_overrides[get_session] = get_session_override
+        yield
+        app.dependency_overrides.clear()
 
+    def test_get_recipe(self, session_with_data: Session):
+        """Test getting a list of recipes."""
         response = client.get("/recipes/")
         recipes = response.json()
 
@@ -103,23 +122,16 @@ class TestRecipeFetch:
 
     def test_get_recipe_no_recipes(self, session: Session):
         """Test getting recipes when none exist."""
-
         def get_session_override():
             return session
 
         app.dependency_overrides[get_session] = get_session_override
-
         response = client.get("/recipes/")
         assert response.status_code == 200
         assert response.json() == []
 
     def test_get_recipe_by_id(self, session_with_data: Session):
         """Test getting a single recipe by ID."""
-
-        def get_session_override():
-            return session_with_data
-
-        app.dependency_overrides[get_session] = get_session_override
         # Get the first recipe from the database
         db_recipe = session_with_data.exec(select(Recipe)).first()
         recipe_id = db_recipe.id
@@ -129,14 +141,8 @@ class TestRecipeFetch:
         assert response.status_code == 200
         assert response.json()["name"] == db_recipe.name
 
-    def test_filter_by_vegetarian(self, session_with_data):
+    def test_filter_by_vegetarian(self, session_with_data: Session):
         """Test filtering recipes by vegetarian status."""
-
-        def get_session_override():
-            return session_with_data
-
-        app.dependency_overrides[get_session] = get_session_override
-
         # Test vegetarian recipes
         response = client.get("/recipes/?vegetarian=true")
         assert response.status_code == 200
@@ -154,14 +160,8 @@ class TestRecipeFetch:
         assert recipes[0]["name"] == "Pasta Carbonara"
         assert recipes[1]["name"] == "Salmon Bake"
 
-    def test_filter_by_servings(self, session_with_data):
+    def test_filter_by_servings(self, session_with_data: Session):
         """Test filtering recipes by amount of servings."""
-
-        def get_session_override():
-            return session_with_data
-
-        app.dependency_overrides[get_session] = get_session_override
-
         # Test vegetarian recipes
         response = client.get("/recipes/?servings=3")
         assert response.status_code == 200
@@ -171,14 +171,8 @@ class TestRecipeFetch:
         recipe_names = [recipe["name"] for recipe in recipes]
         assert "Vegetable Stir Fry" in recipe_names
 
-    def test_filter_by_ingredients(self, session_with_data):
+    def test_filter_by_ingredients(self, session_with_data: Session):
         """Test filtering recipes by ingredients."""
-
-        def get_session_override():
-            return session_with_data
-
-        app.dependency_overrides[get_session] = get_session_override
-
         response = client.get("/recipes/?include_ingredients=pasta")
         assert response.status_code == 200
         recipes = response.json()
@@ -198,13 +192,8 @@ class TestRecipeFetch:
         assert recipes[0]["name"] == "Salmon Bake"
         assert recipes[1]["name"] == "Vegetable Stir Fry"
 
-    def test_filter_by_excluding_ingredient(self, session_with_data):
+    def test_filter_by_excluding_ingredient(self, session_with_data: Session):
         """Test filtering recipes by excluding ingredients."""
-        def get_session_override():
-            return session_with_data
-
-        app.dependency_overrides[get_session] = get_session_override
-
         response = client.get("/recipes/?exclude_ingredients=pasta")
         assert response.status_code == 200
         recipes = response.json()
@@ -217,12 +206,8 @@ class TestRecipeFetch:
         recipes = response.json()
         assert len(recipes) == 0
 
-    def test_combined_filters(self, session_with_data):
+    def test_combined_filters(self, session_with_data: Session):
         """Test combining multiple filters."""
-        def get_session_override():
-            return session_with_data
-
-        app.dependency_overrides[get_session] = get_session_override
         # Vegetarian recipes that don't include pasta
         response = client.get("/recipes/?vegetarian=true&exclude_ingredients=pasta")
         assert response.status_code == 200
@@ -244,12 +229,8 @@ class TestRecipeFetch:
         assert len(recipes) == 1  # Only Salmon Bake
         assert recipes[0]["name"] == "Salmon Bake"
 
-    def test_search_instructions(self, session_with_data):
+    def test_search_instructions(self, session_with_data: Session):
         """Test searching recipes by instructions text."""
-        def get_session_override():
-            return session_with_data
-
-        app.dependency_overrides[get_session] = get_session_override
         # Test recipes with "soy" in instructions
         response = client.get("/recipes/?search=soy")
         assert response.status_code == 200
@@ -275,12 +256,18 @@ class TestRecipeFetch:
 class TestRecipeDelete:
     """Tests for the /recipe/{} DELETE endpoint."""
 
-    def test_delete_recipe_success(self, session_with_data: Session):
-        """Test successfully deleting a recipe."""
+    @pytest.fixture(autouse=True)
+    def setup_dependency_override(self, session_with_data: Session):
+        """Override the get_session dependency for all tests in this class."""
         def get_session_override():
             return session_with_data
 
         app.dependency_overrides[get_session] = get_session_override
+        yield
+        app.dependency_overrides.clear()
+
+    def test_delete_recipe_success(self, session_with_data: Session):
+        """Test successfully deleting a recipe."""
         # Get an existing recipe from the database
         db_recipe = session_with_data.exec(select(Recipe)).first()
         ingredients_before = session_with_data.exec(select(Ingredient)).all()
@@ -314,10 +301,6 @@ class TestRecipeDelete:
 
     def test_delete_nonexistent_recipe(self, session_with_data: Session):
         """Test deleting a non-existent recipe."""
-        def get_session_override():
-            return session_with_data
-
-        app.dependency_overrides[get_session] = get_session_override
         # Use a non-existent ID (e.g., 9999)
         response = client.delete("/recipes/9999")
         assert response.status_code == 404  # Not Found
@@ -325,13 +308,18 @@ class TestRecipeDelete:
 @pytest.mark.usefixtures("session_with_data")
 class TestRecipeUpdate:
     """Test suite for recipe updates."""
-
-    def test_update_recipe_full(self, session_with_data: Session):
-        """Test fully updating a recipe with PUT."""
+    @pytest.fixture(autouse=True)
+    def setup_dependency_override(self, session_with_data: Session):
+        """Override the get_session dependency for all tests in this class."""
         def get_session_override():
             return session_with_data
 
         app.dependency_overrides[get_session] = get_session_override
+        yield
+        app.dependency_overrides.clear()
+
+    def test_update_recipe_full(self, session_with_data: Session):
+        """Test fully updating a recipe with PUT."""
         # Get an existing recipe
         db_recipe = session_with_data.exec(select(Recipe)).first()
         recipe_id = db_recipe.id
@@ -374,3 +362,28 @@ class TestRecipeUpdate:
         ]
         assert "new_ingredient1" in ingredient_names
         assert "new_ingredient2" in ingredient_names
+
+    def test_update_recipe_partial(self, session_with_data: Session):
+        """Test partially updating a recipe."""
+        # Get an existing recipe
+        db_recipe = session_with_data.exec(select(Recipe)).first()
+        recipe_id = db_recipe.id
+
+        # Update only some fields
+        update_data = {
+            "name": "Partially Updated Recipe Name",
+            "servings": 3
+            # Don't update instructions, vegetarian, or ingredients
+        }
+
+        # Update the recipe
+        response = client.put(f"/recipes/{recipe_id}", json=update_data)
+        assert response.status_code == 200
+
+        # Verify the response
+        updated_recipe = response.json()
+        assert updated_recipe["name"] == "Partially Updated Recipe Name"
+        assert updated_recipe["servings"] == 3
+        # Verify unchanged fields
+        assert updated_recipe["instructions"] == db_recipe.instructions
+        assert updated_recipe["vegetarian"] == db_recipe.vegetarian
