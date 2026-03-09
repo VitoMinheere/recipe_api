@@ -7,8 +7,11 @@ from sqlmodel import Session, select
 from src.app.database.models import Ingredient, Recipe, RecipeIngredientLink
 from src.app.database.session import get_session
 from src.app.models.recipe import RecipeModel, RecipeUpdate
-from src.app.services.recipes import (create_links, get_ingredients_by_names,
-                                      upsert_ingredients)
+from src.app.services.recipes import (
+    create_links,
+    get_ingredients_by_names,
+    upsert_ingredients,
+)
 
 router = APIRouter()
 

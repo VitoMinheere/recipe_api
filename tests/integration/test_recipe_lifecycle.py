@@ -2,16 +2,18 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
+
+from src.app.database.models import Ingredient, Recipe, RecipeIngredientLink
 from src.app.database.session import get_session
 from src.app.main import app
-from src.app.database.models import Recipe, Ingredient, RecipeIngredientLink
 
 client = TestClient(app)
+
 
 @pytest.mark.usefixtures("session")
 class TestRecipeLifecycle:
     """End-to-end tests for the complete recipe lifecycle."""
-    
+
     @pytest.fixture(autouse=True)
     def setup_dependency_override(self, session: Session):
         """Override the get_session dependency for all tests in this class."""
@@ -31,7 +33,7 @@ class TestRecipeLifecycle:
             "instructions": "Step 1. Step 2. Step 3.",
             "servings": 4,
             "vegetarian": True,
-            "ingredients": ["ingredient1", "ingredient2", "ingredient3"]
+            "ingredients": ["ingredient1", "ingredient2", "ingredient3"],
         }
 
         # Create the recipe
@@ -54,7 +56,10 @@ class TestRecipeLifecycle:
         # Verify ingredients were created
         ingredients = session.exec(
             select(Ingredient)
-            .join(RecipeIngredientLink, Ingredient.id == RecipeIngredientLink.ingredient_id)
+            .join(
+                RecipeIngredientLink,
+                Ingredient.id == RecipeIngredientLink.ingredient_id,
+            )
             .where(RecipeIngredientLink.recipe_id == recipe_id)
         ).all()
         assert len(ingredients) == len(create_data["ingredients"])
@@ -74,7 +79,7 @@ class TestRecipeLifecycle:
         update_data = {
             "name": "Updated Recipe Name",
             "servings": 6,
-            "ingredients": ["ingredient1", "ingredient4", "ingredient5"]
+            "ingredients": ["ingredient1", "ingredient4", "ingredient5"],
         }
 
         update_response = client.patch(f"/recipes/{recipe_id}", json=update_data)
@@ -91,7 +96,10 @@ class TestRecipeLifecycle:
         # Verify ingredients were updated
         updated_ingredients = session.exec(
             select(Ingredient)
-            .join(RecipeIngredientLink, Ingredient.id == RecipeIngredientLink.ingredient_id)
+            .join(
+                RecipeIngredientLink,
+                Ingredient.id == RecipeIngredientLink.ingredient_id,
+            )
             .where(RecipeIngredientLink.recipe_id == recipe_id)
         ).all()
         updated_ingredient_names = [ing.name for ing in updated_ingredients]
@@ -110,7 +118,9 @@ class TestRecipeLifecycle:
         assert recipe_id in recipe_ids
 
         # Filter by included ingredients
-        filter_response = client.get("/recipes/?include_ingredients=ingredient1,ingredient4")
+        filter_response = client.get(
+            "/recipes/?include_ingredients=ingredient1,ingredient4"
+        )
         assert filter_response.status_code == 200
         filtered_recipes = filter_response.json()
         recipe_ids = [r["id"] for r in filtered_recipes]
@@ -129,10 +139,12 @@ class TestRecipeLifecycle:
             "instructions": "New instructions. Step A. Step B.",
             "servings": 8,
             "vegetarian": False,
-            "ingredients": ["final_ingredient1", "final_ingredient2"]
+            "ingredients": ["final_ingredient1", "final_ingredient2"],
         }
 
-        full_update_response = client.patch(f"/recipes/{recipe_id}", json=full_update_data)
+        full_update_response = client.patch(
+            f"/recipes/{recipe_id}", json=full_update_data
+        )
         assert full_update_response.status_code == 200
         fully_updated_recipe = full_update_response.json()
         assert fully_updated_recipe["name"] == full_update_data["name"]
@@ -154,15 +166,23 @@ class TestRecipeLifecycle:
 
         # Verify the ingredient links were removed
         remaining_links = session.exec(
-            select(RecipeIngredientLink)
-            .where(RecipeIngredientLink.recipe_id == recipe_id)
+            select(RecipeIngredientLink).where(
+                RecipeIngredientLink.recipe_id == recipe_id
+            )
         ).all()
         assert len(remaining_links) == 0
 
         # Verify ingredients still exist (they shouldn't be deleted)
-        for ingredient_name in ["ingredient1", "ingredient4", "ingredient5",
-                                "final_ingredient1", "final_ingredient2"]:
+        for ingredient_name in [
+            "ingredient1",
+            "ingredient4",
+            "ingredient5",
+            "final_ingredient1",
+            "final_ingredient2",
+        ]:
             ingredient = session.exec(
                 select(Ingredient).where(Ingredient.name == ingredient_name)
             ).first()
-            assert ingredient is not None, f"Ingredient {ingredient_name} should still exist"
+            assert ingredient is not None, (
+                f"Ingredient {ingredient_name} should still exist"
+            )

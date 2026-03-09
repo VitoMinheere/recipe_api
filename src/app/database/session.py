@@ -1,4 +1,5 @@
 from sqlmodel import Session, SQLModel, create_engine
+
 from src.app.config import settings
 
 DATABASE_URL = settings.database_url
