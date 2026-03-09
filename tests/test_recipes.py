@@ -355,3 +355,22 @@ class TestRecipeUpdate:
         assert updated_recipe["instructions"] == "Updated instructions with more details"
         assert updated_recipe["servings"] == 5
         assert updated_recipe["vegetarian"] == False
+
+        # Verify the database state
+        db_updated = session_with_data.get(Recipe, recipe_id)
+        assert db_updated.name == "Updated Recipe Name"
+        assert db_updated.instructions == "Updated instructions with more details"
+        assert db_updated.servings == 5
+        assert db_updated.vegetarian == False
+
+        # Verify ingredients were updated
+        ingredient_names = [
+            ingredient.name
+            for ingredient in session_with_data.exec(
+                select(Ingredient)
+                .join(RecipeIngredientLink, Ingredient.id == RecipeIngredientLink.ingredient_id)
+                .where(RecipeIngredientLink.recipe_id == recipe_id)
+            ).all()
+        ]
+        assert "new_ingredient1" in ingredient_names
+        assert "new_ingredient2" in ingredient_names
