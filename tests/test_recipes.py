@@ -321,3 +321,37 @@ class TestRecipeDelete:
         # Use a non-existent ID (e.g., 9999)
         response = client.delete("/recipes/9999")
         assert response.status_code == 404  # Not Found
+
+@pytest.mark.usefixtures("session_with_data")
+class TestRecipeUpdate:
+    """Test suite for recipe updates."""
+
+    def test_update_recipe_full(self, session_with_data: Session):
+        """Test fully updating a recipe with PUT."""
+        def get_session_override():
+            return session_with_data
+
+        app.dependency_overrides[get_session] = get_session_override
+        # Get an existing recipe
+        db_recipe = session_with_data.exec(select(Recipe)).first()
+        recipe_id = db_recipe.id
+
+        # Update data
+        update_data = {
+            "name": "Updated Recipe Name",
+            "instructions": "Updated instructions with more details",
+            "servings": 5,
+            "vegetarian": not db_recipe.vegetarian,
+            # "ingredients": ["new_ingredient1", "new_ingredient2"]
+        }
+
+        # Update the recipe
+        response = client.put(f"/recipes/{recipe_id}", json=update_data)
+        assert response.status_code == 200
+
+        # Verify the response
+        updated_recipe = response.json()
+        assert updated_recipe["name"] == "Updated Recipe Name"
+        assert updated_recipe["instructions"] == "Updated instructions with more details"
+        assert updated_recipe["servings"] == 5
+        assert updated_recipe["vegetarian"] == (not db_recipe.vegetarian)
