@@ -1,8 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
+from pydantic import ValidationError
 
 from src.app.database.models import Ingredient, Recipe, RecipeIngredientLink
+from src.app.models.recipe import RecipeModel, RecipeUpdate
 from src.app.database.session import get_session
 from src.app.main import app
 
@@ -387,3 +389,51 @@ class TestRecipeUpdate:
         # Verify unchanged fields
         assert updated_recipe["instructions"] == db_recipe.instructions
         assert updated_recipe["vegetarian"] == db_recipe.vegetarian
+
+class TestFieldValidators:
+    """Test suite for field validators in Recipe models."""
+
+    # Tests for name validator
+    def test_name_validator_valid(self):
+        """Test that valid names pass validation."""
+        # Test with normal name
+        recipe = RecipeModel(
+            name="Valid Recipe Name",
+            instructions="Cook for 30 minutes",
+            servings=2,
+            vegetarian=False,
+            ingredients=["ingredient1"]
+        )
+        assert recipe.name == "Valid Recipe Name"
+
+        # Test with name that has extra whitespace
+        recipe = RecipeModel(
+            name="  Valid Recipe Name  ",
+            instructions="Cook for 30 minutes",
+            servings=2,
+            vegetarian=False,
+            ingredients=["ingredient1"]
+        )
+        assert recipe.name == "Valid Recipe Name"  # Should be stripped
+
+    def test_name_validator_empty(self):
+        """Test that empty names fail validation."""
+        with pytest.raises(ValidationError) as exc_info:
+            RecipeModel(
+                name="",
+                instructions="Cook for 30 minutes",
+                servings=2,
+                vegetarian=False,
+                ingredients=["ingredient1"]
+            )
+        assert "Recipe name cannot be empty" in str(exc_info.value)
+
+        with pytest.raises(ValidationError) as exc_info:
+            RecipeModel(
+                name="   ",  # Only whitespace
+                instructions="Cook for 30 minutes",
+                servings=2,
+                vegetarian=False,
+                ingredients=["ingredient1"]
+            )
+        assert "Recipe name cannot be empty" in str(exc_info.value)
