@@ -1,6 +1,7 @@
 from sqlmodel import Session, SQLModel, create_engine
+from src.app.config import settings
 
-DATABASE_URL = "sqlite:///recipes.db"
+DATABASE_URL = settings.database_url
 
 connect_args = {"check_same_thread": False}
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
