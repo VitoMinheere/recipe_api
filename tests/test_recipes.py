@@ -1,12 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, select
 from pydantic import ValidationError
+from sqlmodel import Session, select
 
 from src.app.database.models import Ingredient, Recipe, RecipeIngredientLink
-from src.app.models.recipe import RecipeModel, RecipeUpdate
 from src.app.database.session import get_session
 from src.app.main import app
+from src.app.models.recipe import RecipeModel
 
 client = TestClient(app)
 
@@ -14,9 +14,11 @@ client = TestClient(app)
 @pytest.mark.usefixtures("session")
 class TestRecipeCreation:
     """Tests for the /recipes/ POST endpoint."""
+
     @pytest.fixture(autouse=True)
     def setup_dependency_override(self, session: Session):
         """Override the get_session dependency for all tests in this class."""
+
         def get_session_override():
             return session
 
@@ -103,9 +105,11 @@ class TestRecipeCreation:
 @pytest.mark.usefixtures("session_with_data")
 class TestRecipeFetch:
     """Tests for the /recipes/{} GET endpoint."""
+
     @pytest.fixture(autouse=True)
     def setup_dependency_override(self, session_with_data: Session):
         """Override the get_session dependency for all tests in this class."""
+
         def get_session_override():
             return session_with_data
 
@@ -124,6 +128,7 @@ class TestRecipeFetch:
 
     def test_get_recipe_no_recipes(self, session: Session):
         """Test getting recipes when none exist."""
+
         def get_session_override():
             return session
 
@@ -218,12 +223,14 @@ class TestRecipeFetch:
         assert recipes[0]["name"] == "Vegetable Stir Fry"
 
         # Non Vegetarian recipes that don't include pasta
-        response = client.get("/recipes/?vegetarian=false&exclude_ingredients=pasta&include_ingredients=potatoes")
+        response = client.get(
+            "/recipes/?vegetarian=false&exclude_ingredients=pasta&include_ingredients=potatoes"
+        )
         assert response.status_code == 200
         recipes = response.json()
         assert len(recipes) == 1  # Only Salmon Bake
         assert recipes[0]["name"] == "Salmon Bake"
-        
+
         # All recipes with potatoes in ingredients and "oven" in instructions
         response = client.get("/recipes/?include_ingredients=potatoes&search=oven")
         assert response.status_code == 200
@@ -254,6 +261,7 @@ class TestRecipeFetch:
         assert len(recipes) == 1  # Only one recipe with "pasta" in instructions
         assert recipes[0]["name"] == "Pasta Carbonara"
 
+
 @pytest.mark.usefixtures("session_with_data")
 class TestRecipeDelete:
     """Tests for the /recipe/{} DELETE endpoint."""
@@ -261,6 +269,7 @@ class TestRecipeDelete:
     @pytest.fixture(autouse=True)
     def setup_dependency_override(self, session_with_data: Session):
         """Override the get_session dependency for all tests in this class."""
+
         def get_session_override():
             return session_with_data
 
@@ -293,7 +302,9 @@ class TestRecipeDelete:
 
         # Verify the links are also removed
         links = session_with_data.exec(
-            select(RecipeIngredientLink).where(RecipeIngredientLink.recipe_id == recipe_id)
+            select(RecipeIngredientLink).where(
+                RecipeIngredientLink.recipe_id == recipe_id
+            )
         ).all()
         assert len(links) == 0
 
@@ -307,12 +318,15 @@ class TestRecipeDelete:
         response = client.delete("/recipes/9999")
         assert response.status_code == 404  # Not Found
 
+
 @pytest.mark.usefixtures("session_with_data")
 class TestRecipeUpdate:
     """Test suite for recipe updates."""
+
     @pytest.fixture(autouse=True)
     def setup_dependency_override(self, session_with_data: Session):
         """Override the get_session dependency for all tests in this class."""
+
         def get_session_override():
             return session_with_data
 
@@ -321,44 +335,50 @@ class TestRecipeUpdate:
         app.dependency_overrides.clear()
 
     def test_update_recipe_full(self, session_with_data: Session):
-        """Test fully updating a recipe with PUT."""
+        """Test fully updating a recipe with PATCH."""
         # Get an existing recipe
         db_recipe = session_with_data.exec(select(Recipe)).first()
         recipe_id = db_recipe.id
+        original_vegetarian_status = db_recipe.vegetarian
 
         # Update data
         update_data = {
             "name": "Updated Recipe Name",
             "instructions": "Updated instructions with more details",
             "servings": 5,
-            "vegetarian": False,
-            "ingredients": ["new_ingredient1", "new_ingredient2"]
+            "vegetarian": not db_recipe.vegetarian,  # Flip vegetarian status
+            "ingredients": ["new_ingredient1", "new_ingredient2"],
         }
 
         # Update the recipe
-        response = client.put(f"/recipes/{recipe_id}", json=update_data)
+        response = client.patch(f"/recipes/{recipe_id}", json=update_data)
         assert response.status_code == 200
 
         # Verify the response
         updated_recipe = response.json()
         assert updated_recipe["name"] == "Updated Recipe Name"
-        assert updated_recipe["instructions"] == "Updated instructions with more details"
+        assert (
+            updated_recipe["instructions"] == "Updated instructions with more details"
+        )
         assert updated_recipe["servings"] == 5
-        assert updated_recipe["vegetarian"] == False
+        assert updated_recipe["vegetarian"] != original_vegetarian_status
 
         # Verify the database state
         db_updated = session_with_data.get(Recipe, recipe_id)
         assert db_updated.name == "Updated Recipe Name"
         assert db_updated.instructions == "Updated instructions with more details"
         assert db_updated.servings == 5
-        assert db_updated.vegetarian == False
+        assert db_updated.vegetarian != original_vegetarian_status
 
         # Verify ingredients were updated
         ingredient_names = [
             ingredient.name
             for ingredient in session_with_data.exec(
                 select(Ingredient)
-                .join(RecipeIngredientLink, Ingredient.id == RecipeIngredientLink.ingredient_id)
+                .join(
+                    RecipeIngredientLink,
+                    Ingredient.id == RecipeIngredientLink.ingredient_id,
+                )
                 .where(RecipeIngredientLink.recipe_id == recipe_id)
             ).all()
         ]
@@ -374,12 +394,12 @@ class TestRecipeUpdate:
         # Update only some fields
         update_data = {
             "name": "Partially Updated Recipe Name",
-            "servings": 3
+            "servings": 3,
             # Don't update instructions, vegetarian, or ingredients
         }
 
         # Update the recipe
-        response = client.put(f"/recipes/{recipe_id}", json=update_data)
+        response = client.patch(f"/recipes/{recipe_id}", json=update_data)
         assert response.status_code == 200
 
         # Verify the response
@@ -389,6 +409,7 @@ class TestRecipeUpdate:
         # Verify unchanged fields
         assert updated_recipe["instructions"] == db_recipe.instructions
         assert updated_recipe["vegetarian"] == db_recipe.vegetarian
+
 
 class TestFieldValidators:
     """Test suite for field validators in Recipe models."""
@@ -402,7 +423,7 @@ class TestFieldValidators:
             instructions="Cook for 30 minutes",
             servings=2,
             vegetarian=False,
-            ingredients=["ingredient1"]
+            ingredients=["ingredient1"],
         )
         assert recipe.name == "Valid Recipe Name"
 
@@ -412,7 +433,7 @@ class TestFieldValidators:
             instructions="Cook for 30 minutes",
             servings=2,
             vegetarian=False,
-            ingredients=["ingredient1"]
+            ingredients=["ingredient1"],
         )
         assert recipe.name == "Valid Recipe Name"  # Should be stripped
 
@@ -424,7 +445,7 @@ class TestFieldValidators:
                 instructions="Cook for 30 minutes",
                 servings=2,
                 vegetarian=False,
-                ingredients=["ingredient1"]
+                ingredients=["ingredient1"],
             )
         assert "Recipe name cannot be empty" in str(exc_info.value)
 
@@ -434,6 +455,6 @@ class TestFieldValidators:
                 instructions="Cook for 30 minutes",
                 servings=2,
                 vegetarian=False,
-                ingredients=["ingredient1"]
+                ingredients=["ingredient1"],
             )
         assert "Recipe name cannot be empty" in str(exc_info.value)

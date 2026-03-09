@@ -1,5 +1,5 @@
 import logging
-from typing import List, Annotated, Optional
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select
@@ -7,7 +7,8 @@ from sqlmodel import Session, select
 from src.app.database.models import Ingredient, Recipe, RecipeIngredientLink
 from src.app.database.session import get_session
 from src.app.models.recipe import RecipeModel, RecipeUpdate
-from src.app.services.recipes import create_links, upsert_ingredients, get_ingredients_by_names
+from src.app.services.recipes import (create_links, get_ingredients_by_names,
+                                      upsert_ingredients)
 
 router = APIRouter()
 
@@ -77,7 +78,9 @@ def get_recipes(
     exclude_ingredients: Annotated[
         str | None, Query(description="Filter by excluding ingredients")
     ] = None,
-    search: Annotated[str | None, Query(description="Search text in instructions")] = None
+    search: Annotated[
+        str | None, Query(description="Search text in instructions")
+    ] = None,
 ):
     """Get a list of all recipes."""
     query = select(Recipe).distinct()
@@ -90,7 +93,9 @@ def get_recipes(
         query = query.where(Recipe.instructions.ilike(f"%{search}%"))
 
     if include_ingredients is not None:
-        if ingredients := get_ingredients_by_names(session, include_ingredients.split(",")):
+        if ingredients := get_ingredients_by_names(
+            session, include_ingredients.split(",")
+        ):
             ingredient_ids = set(i.id for i in ingredients)
             query = query.join(RecipeIngredientLink).where(
                 RecipeIngredientLink.ingredient_id.in_(ingredient_ids)
@@ -99,7 +104,9 @@ def get_recipes(
             return []  # No matching ingredients, return empty list
 
     if exclude_ingredients is not None:
-        if ingredients := get_ingredients_by_names(session, exclude_ingredients.split(",")):
+        if ingredients := get_ingredients_by_names(
+            session, exclude_ingredients.split(",")
+        ):
             ingredient_ids = set(i.id for i in ingredients)
             recipe_ids_with_excluded = session.exec(
                 select(RecipeIngredientLink.recipe_id).where(
@@ -125,23 +132,18 @@ def get_recipe(recipe_id: int, session: Session = Depends(get_session)):
 
 
 @router.delete("/{recipe_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_recipe(
-    recipe_id: int,
-    session: Session = Depends(get_session)
-):
+def delete_recipe(recipe_id: int, session: Session = Depends(get_session)):
     """Delete a recipe and its ingredient associations."""
     # Get the recipe
     recipe = session.get(Recipe, recipe_id)
     if not recipe:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Recipe not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found"
         )
 
     # Delete all ingredient links for this recipe
     links = session.exec(
-        select(RecipeIngredientLink)
-        .where(RecipeIngredientLink.recipe_id == recipe_id)
+        select(RecipeIngredientLink).where(RecipeIngredientLink.recipe_id == recipe_id)
     ).all()
 
     for link in links:
@@ -154,19 +156,16 @@ def delete_recipe(
     return None  # 204 No Content
 
 
-@router.put("/{recipe_id}", response_model=Recipe)
+@router.patch("/{recipe_id}", response_model=Recipe)
 def update_recipe(
-    recipe_id: int,
-    recipe_data: RecipeUpdate,
-    session: Session = Depends(get_session)
+    recipe_id: int, recipe_data: RecipeUpdate, session: Session = Depends(get_session)
 ):
     """Fully update a recipe."""
     # Get the existing recipe
     db_recipe = session.get(Recipe, recipe_id)
     if not db_recipe:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Recipe not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found"
         )
 
     # Update basic fields
@@ -178,8 +177,9 @@ def update_recipe(
     if recipe_data.ingredients is not None:
         # Remove all existing ingredient links
         existing_links = session.exec(
-            select(RecipeIngredientLink)
-            .where(RecipeIngredientLink.recipe_id == recipe_id)
+            select(RecipeIngredientLink).where(
+                RecipeIngredientLink.recipe_id == recipe_id
+            )
         ).all()
 
         for link in existing_links:
@@ -200,8 +200,7 @@ def update_recipe(
 
             # Create the link
             link = RecipeIngredientLink(
-                recipe_id=recipe_id,
-                ingredient_id=ingredient.id
+                recipe_id=recipe_id, ingredient_id=ingredient.id
             )
             session.add(link)
 
