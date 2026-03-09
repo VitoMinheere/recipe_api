@@ -7,8 +7,11 @@ from sqlmodel import Session, select
 from src.app.database.models import Ingredient, Recipe, RecipeIngredientLink
 from src.app.database.session import get_session
 from src.app.models.recipe import RecipeModel, RecipeUpdate
-from src.app.services.recipes import (create_links, get_ingredients_by_names,
-                                      upsert_ingredients)
+from src.app.services.recipes import (
+    create_links,
+    get_ingredients_by_names,
+    upsert_ingredients,
+)
 
 router = APIRouter()
 
@@ -42,6 +45,7 @@ def create_recipe(recipe_data: RecipeModel, session: Session = Depends(get_sessi
         recipe = Recipe(
             name=recipe_data.name,
             instructions=recipe_data.instructions,
+            ingredients=recipe_data.ingredients,
             servings=recipe_data.servings,
             vegetarian=recipe_data.vegetarian,
         )
