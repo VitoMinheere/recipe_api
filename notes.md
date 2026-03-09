@@ -24,3 +24,7 @@ I assumed it would only return the Vegetable Stir Fry as pasta was out but it st
 After setting up the include and exclude filters it was then up to the unit tests to prove that combining them also works. As all the filter wind up as WHERE clauses, none of them should clash and it would be simple to pinpoint the result.
 
 Last part in the GET was the search in text. I opted for a basic text search due to time constraints and simplicity. Ideally there would be a setup with a dedicated table which is optimized for text search with a link to the Recipe id. However this would require an extra call whenever the instructions of a Recipe get updated.
+
+## Update Recipe
+
+For the PUT/PATCH I first went for updating the Recipe object and then later on also taking care of the Ingredients and RecipeIngredientsLink. The PAtch should not delete Ingredients as they can be used by different Recipes, it should only delete the Links. This approach could lead to orphaned Ingredients in the table but a daily or weekly scan for Ingredients not in the RecipeIngredientsLink and then cleaning them up could fix that.

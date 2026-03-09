@@ -189,7 +189,37 @@ def update_recipe(
         if value is not None:
             setattr(db_recipe, field, value)
 
-    print(db_recipe)
+    # Handle ingredients
+    if recipe_data.ingredients is not None:
+        # Remove all existing ingredient links
+        existing_links = session.exec(
+            select(RecipeIngredientLink)
+            .where(RecipeIngredientLink.recipe_id == recipe_id)
+        ).all()
+
+        for link in existing_links:
+            session.delete(link)
+
+        # Add new ingredient links
+        for ingredient_name in recipe_data.ingredients:
+            # Find or create the ingredient
+            ingredient = session.exec(
+                select(Ingredient).where(Ingredient.name == ingredient_name)
+            ).first()
+
+            if not ingredient:
+                ingredient = Ingredient(name=ingredient_name)
+                session.add(ingredient)
+                session.commit()
+                session.refresh(ingredient)
+
+            # Create the link
+            link = RecipeIngredientLink(
+                recipe_id=recipe_id,
+                ingredient_id=ingredient.id
+            )
+            session.add(link)
+
     session.commit()
     session.refresh(db_recipe)
     return db_recipe
